@@ -1,15 +1,37 @@
 from flask import Blueprint, abort, current_app, jsonify, request
 import jwt
 import requests
+import json
 
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE')
 
 
+def proxy_request(req, upstream_url):
+    """Forward request to given url"""
+    response = requests.request(
+        method=req.method,
+        url=upstream_url,
+        headers=req.headers,
+        params=req.args,
+        json=req.json,
+    )
+    try:
+        return response.json()
+    except json.decoder.JSONDecodeError:
+        return response.text
+
 @blueprint.route('/', defaults={'relative_path': ''}, methods=SUPPORTED_METHODS)
 @blueprint.route('/<path:relative_path>', methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
+    if f"/{relative_path}" in current_app.config["PATH_WHITELIST"]:
+        response_content = proxy_request(
+            req=request,
+            upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}"
+        )
+        return response_content
+
     token = request.headers.get("authorization", "").split("Bearer ")[-1]
     if not token:
         return jsonify(message="token missing"), 400
@@ -28,14 +50,11 @@ def validate_jwt(relative_path):
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
 
-    response = requests.request(
-        method=request.method,
-        url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
-        headers=request.headers,
-        params=request.args,
-        json=request.json,
+    response_content = proxy_request(
+        req=request,
+        upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}"
     )
-    return response.json()
+    return response_content
 
 
 @blueprint.route('/settings', defaults={'config_key': None})
