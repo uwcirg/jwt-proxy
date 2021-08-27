@@ -4,12 +4,16 @@
 #
 #    pip-compile
 #
+cffi==1.14.6              # via cryptography
 click==8.0.1              # via flask
+cryptography==3.4.8       # via pyjwt
 flask==2.0.1              # via jwt_proxy (setup.py)
 importlib-metadata==4.7.1  # via click
 itsdangerous==2.0.1       # via flask
 jinja2==3.0.1             # via flask
 markupsafe==2.0.1         # via jinja2
+pycparser==2.20           # via cffi
+pyjwt[crypto]==2.1.0      # via jwt_proxy (setup.py)
 typing-extensions==3.10.0.0  # via importlib-metadata
 werkzeug==2.0.1           # via flask
 zipp==3.5.0               # via importlib-metadata
