@@ -1,0 +1,15 @@
+---
+version: "3.4"
+services:
+  proxy:
+    image: ghcr.io/uwcirg/jwt-proxy:${PROXY_IMAGE_TAG:-develop}
+    build:
+      context: .
+    volumes:
+      - ./:/opt/app
+    ports:
+      # map container port 8008 to port 8001 on host
+      # access via localhost:8001
+      - ${EXTERNAL_PORT:-8001}:${PORT:-8008}
+    env_file:
+      - jwt_proxy.env

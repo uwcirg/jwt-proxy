@@ -1,12 +1,41 @@
-from flask import Blueprint, abort, current_app, jsonify
-from flask.json import JSONEncoder
+from flask import Blueprint, abort, current_app, jsonify, request
+import jwt
+import requests
 
 blueprint = Blueprint('auth', __name__)
 
 @blueprint.route('/', defaults={'path': ''})
 @blueprint.route('/<path:path>')
-def catchall(path):
-    return 'You want path: %s' % path
+def validate_jwt(path):
+    """Validate JWT and pass to upstream server"""
+    token = request.headers.pop("authorization", "").split("Bearer ")[-1]
+    if not token:
+        return jsonify({"message":"token missing"}), 400
+
+    jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
+    signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+    try:
+        decoded_token = jwt.decode(
+            jwt=token,
+            # TODO cache public key in redis
+            key=signing_key.key,
+            algorithms=("RS256"),
+            audience=("account"),
+            options={
+                #"verify_signature": False,
+                #"verify_aud": False
+            }
+        )
+    except jwt.exceptions.ExpiredSignatureError:
+        return jsonify({"message":"token expired"}), 401
+
+    response = requests.get(
+        url=f"{current_app.config['UPSTREAM_SERVER']}{path}",
+        headers=request.headers,
+        params=request.args,
+    )
+    return response.json()
 
 
 @blueprint.route('/settings', defaults={'config_key': None})
@@ -15,7 +44,7 @@ def config_settings(config_key):
     """Non-secret application settings"""
 
     # workaround no JSON representation for datetime.timedelta
-    class CustomJSONEncoder(JSONEncoder):
+    class CustomJSONEncoder(flask.json.JSONEncoder):
         def default(self, obj):
             return str(obj)
     current_app.json_encoder = CustomJSONEncoder
