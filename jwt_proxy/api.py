@@ -4,9 +4,9 @@ import requests
 
 blueprint = Blueprint('auth', __name__)
 
-@blueprint.route('/', defaults={'path': ''})
-@blueprint.route('/<path:path>')
-def validate_jwt(path):
+@blueprint.route('/', defaults={'relative_path': ''})
+@blueprint.route('/<path:relative_path>')
+def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
     token = request.headers.get("authorization", "").split("Bearer ")[-1]
     if not token:
@@ -27,7 +27,7 @@ def validate_jwt(path):
         return jsonify({"message":"token expired"}), 401
 
     response = requests.get(
-        url=f"{current_app.config['UPSTREAM_SERVER']}{path}",
+        url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
         headers=request.headers,
         params=request.args,
     )
