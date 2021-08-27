@@ -3,9 +3,11 @@ import jwt
 import requests
 
 blueprint = Blueprint('auth', __name__)
+SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE')
 
-@blueprint.route('/', defaults={'relative_path': ''})
-@blueprint.route('/<path:relative_path>')
+
+@blueprint.route('/', defaults={'relative_path': ''}, methods=SUPPORTED_METHODS)
+@blueprint.route('/<path:relative_path>', methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
     token = request.headers.get("authorization", "").split("Bearer ")[-1]
