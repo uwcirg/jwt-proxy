@@ -28,10 +28,12 @@ def validate_jwt(relative_path):
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
 
-    response = requests.get(
+    response = requests.request(
+        method=request.method,
         url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
         headers=request.headers,
         params=request.args,
+        json=request.json,
     )
     return response.json()
 
