@@ -10,7 +10,7 @@ def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
     token = request.headers.get("authorization", "").split("Bearer ")[-1]
     if not token:
-        return jsonify({"message":"token missing"}), 400
+        return jsonify(message="token missing"}), 400
 
     jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
     signing_key = jwks_client.get_signing_key_from_jwt(token)
@@ -24,7 +24,7 @@ def validate_jwt(relative_path):
             audience=("account"),
         )
     except jwt.exceptions.ExpiredSignatureError:
-        return jsonify({"message":"token expired"}), 401
+        return jsonify(message="token expired"), 401
 
     response = requests.get(
         url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
