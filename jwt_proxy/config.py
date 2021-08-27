@@ -7,4 +7,4 @@ import os
 
 # $KEYCLOAK_FQDN/auth/realms/$REALM/protocol/openid-connect/certs
 JWKS_URL = os.getenv("JWKS_URL")
-UPSTREAM_URL = os.getenv("UPSTREAM_URL")
+UPSTREAM_SERVER = os.getenv("UPSTREAM_SERVER")
