@@ -22,10 +22,6 @@ def validate_jwt(path):
             key=signing_key.key,
             algorithms=("RS256"),
             audience=("account"),
-            options={
-                #"verify_signature": False,
-                #"verify_aud": False
-            }
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify({"message":"token expired"}), 401
