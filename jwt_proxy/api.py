@@ -8,7 +8,7 @@ blueprint = Blueprint('auth', __name__)
 @blueprint.route('/<path:path>')
 def validate_jwt(path):
     """Validate JWT and pass to upstream server"""
-    token = request.headers.pop("authorization", "").split("Bearer ")[-1]
+    token = request.headers.get("authorization", "").split("Bearer ")[-1]
     if not token:
         return jsonify({"message":"token missing"}), 400
 
