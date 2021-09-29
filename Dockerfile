@@ -11,4 +11,4 @@ ENV FLASK_APP=jwt_proxy.wsgi:app \
 
 EXPOSE "${PORT}"
 
-CMD flask run --host 0.0.0.0 --port "${PORT}"
+CMD gunicorn --bind "0.0.0.0:${PORT:-8008}" ${FLASK_APP}
