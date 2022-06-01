@@ -57,6 +57,18 @@ def validate_jwt(relative_path):
     return response_content
 
 
+@blueprint.route('/fhir/.well-known/smart-configuration')
+def smart_configuration():
+    """Non-secret application settings"""
+
+    results = {
+        "authorization_endpoint": current_app.config.get("OIDC_AUTHORIZE_URL"),
+        "token_endpoint": current_app.config.get("OIDC_TOKEN_URI"),
+        "introspection_endpoint": current_app.config.get("OIDC_TOKEN_INTROSPECTION_URI")
+    }
+    return jsonify(results)
+
+
 @blueprint.route('/settings', defaults={'config_key': None})
 @blueprint.route('/settings/<string:config_key>')
 def config_settings(config_key):
