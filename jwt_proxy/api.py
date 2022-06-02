@@ -4,7 +4,7 @@ import requests
 import json
 
 blueprint = Blueprint('auth', __name__)
-SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE')
+SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 
 def proxy_request(req, upstream_url):
