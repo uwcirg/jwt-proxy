@@ -21,14 +21,15 @@ def proxy_request(req, upstream_url):
     except json.decoder.JSONDecodeError:
         return response.text
 
-@blueprint.route('/', defaults={'relative_path': ''}, methods=SUPPORTED_METHODS)
-@blueprint.route('/<path:relative_path>', methods=SUPPORTED_METHODS)
+
+@blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
+@blueprint.route("/<path:relative_path>", methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
     if f"/{relative_path}" in current_app.config["PATH_WHITELIST"]:
         response_content = proxy_request(
             req=request,
-            upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}"
+            upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
         )
         return response_content
 
@@ -52,13 +53,27 @@ def validate_jwt(relative_path):
 
     response_content = proxy_request(
         req=request,
-        upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}"
+        upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
     )
     return response_content
 
 
-@blueprint.route('/settings', defaults={'config_key': None})
-@blueprint.route('/settings/<string:config_key>')
+@blueprint.route("/fhir/.well-known/smart-configuration")
+def smart_configuration():
+    """Non-secret application settings"""
+
+    results = {
+        "authorization_endpoint": current_app.config.get("OIDC_AUTHORIZE_URL"),
+        "token_endpoint": current_app.config.get("OIDC_TOKEN_URI"),
+        "introspection_endpoint": current_app.config.get(
+            "OIDC_TOKEN_INTROSPECTION_URI"
+        ),
+    }
+    return jsonify(results)
+
+
+@blueprint.route("/settings", defaults={"config_key": None})
+@blueprint.route("/settings/<string:config_key>")
 def config_settings(config_key):
     """Non-secret application settings"""
 
@@ -66,10 +81,11 @@ def config_settings(config_key):
     class CustomJSONEncoder(flask_json.JSONEncoder):
         def default(self, obj):
             return str(obj)
+
     current_app.json_encoder = CustomJSONEncoder
 
     # return selective keys - not all can be be viewed by users, e.g.secret key
-    blacklist = ('SECRET', 'KEY')
+    blacklist = ("SECRET", "KEY")
 
     if config_key:
         key = config_key.upper()
