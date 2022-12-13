@@ -3,6 +3,8 @@ import jwt
 import requests
 import json
 
+from jwt_proxy.audit import audit_HAPI_change
+
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
@@ -17,7 +19,14 @@ def proxy_request(req, upstream_url):
         json=req.json,
     )
     try:
-        return response.json()
+        result = response.json()
+        if req.method in ("POST", "PUT", "DELETE"):
+            audit_HAPI_change(
+                user_info=user,
+                method=req.method,
+                params=req.args,
+            )
+        return result
     except json.decoder.JSONDecodeError:
         return response.text
 
