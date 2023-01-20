@@ -8,6 +8,7 @@ import logging
 from jwt_proxy.logserverhandler import LogServerHandler
 
 EVENT_LOG_NAME = "jwt_proxy_event_logger"
+EVENT_VERSION = "1"
 
 
 def audit_log_init(app):
@@ -34,15 +35,20 @@ def audit_entry(message, level="info", extra=None):
 
 
 def audit_HAPI_change(
-    user_info, method, params=None, resource=None, resource_type=None, resource_id=None
+    user_info, method, params=None, resource=None, resource_type=None, resource_id=None, url=None
 ):
     rt = resource_type or resource and resource.get("resourceType")
+    if not rt:
+        rt = url.split("/")[-1]
     id = resource_id or resource and resource.get("_id", "")
-    msg = f"{method} {rt}/{id}"
-    extra = {"tags": [rt, method], "user": user_info}
+    msg = f"{method} {rt}/{id}" if id else f"{method} {rt}"
+    extra = {
+        "event_version": EVENT_VERSION,
+        "tags": [rt, method],
+        "user": user_info}
 
-    if rt == "Patient":
-        extra["patient"] = {"subject.id": resource_id}
+    if rt == "Patient" and id:
+        extra["subject"] = f"{rt}/{id}"
     elif resource:
         extra["resource"] = resource
 

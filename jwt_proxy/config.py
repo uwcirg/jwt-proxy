@@ -12,6 +12,8 @@ OIDC_AUTHORIZE_URL = os.getenv("OIDC_AUTHORIZE_URL")
 OIDC_TOKEN_URI = os.getenv("OIDC_TOKEN_URI")
 OIDC_TOKEN_INTROSPECTION_URI = os.getenv("OIDC_TOKEN_INTROSPECTION_URI")
 JWKS_URL = os.getenv("JWKS_URL")
+# NB log level hardcoded at INFO for logserver handler
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 LOGSERVER_TOKEN = os.getenv("LOGSERVER_TOKEN")
 LOGSERVER_URL = os.getenv("LOGSERVER_URL")
 UPSTREAM_SERVER = os.getenv("UPSTREAM_SERVER")
