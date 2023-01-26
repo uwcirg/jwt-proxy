@@ -3,11 +3,13 @@ import jwt
 import requests
 import json
 
+from jwt_proxy.audit import audit_HAPI_change
+
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 
-def proxy_request(req, upstream_url):
+def proxy_request(req, upstream_url, user_info=None):
     """Forward request to given url"""
     response = requests.request(
         method=req.method,
@@ -17,9 +19,23 @@ def proxy_request(req, upstream_url):
         json=req.json,
     )
     try:
-        return response.json()
+        result = response.json()
     except json.decoder.JSONDecodeError:
         return response.text
+
+    # Capture all changes
+    try:
+        if req.method in ("POST", "PUT", "DELETE"):
+            audit_HAPI_change(
+                user_info=user_info,
+                method=req.method,
+                params=req.args,
+                url=upstream_url,
+            )
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(e)
+    return result
 
 
 @blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
@@ -54,6 +70,7 @@ def validate_jwt(relative_path):
     response_content = proxy_request(
         req=request,
         upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
+        user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
     )
     return response_content
 
