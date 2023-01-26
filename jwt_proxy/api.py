@@ -70,7 +70,7 @@ def validate_jwt(relative_path):
     response_content = proxy_request(
         req=request,
         upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
-        user_info=decoded_token.get("preferred_username"),
+        user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
     )
     return response_content
 
