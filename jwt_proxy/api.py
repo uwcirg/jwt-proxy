@@ -17,6 +17,7 @@ def proxy_request(req, upstream_url, user_info=None):
         headers=req.headers,
         params=req.args,
         json=req.json,
+        data=req.data
     )
     try:
         result = response.json()
