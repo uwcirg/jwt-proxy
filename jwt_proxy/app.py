@@ -31,6 +31,6 @@ def configure_logging(app):
     app.logger  # must call to init prior to config or it'll replace
     logging_config.fileConfig("logging.ini", disable_existing_loggers=False)
     app.logger.setLevel(getattr(logging, app.config["LOG_LEVEL"].upper()))
-    if app.config["LOGSERVER_URL"]:
+    if app.config["LOGSERVER_URL"] and app.config["LOGSERVER_TOKEN"]:
         audit_log_init(app)
         audit_entry("jwt_proxy logging initialized")
