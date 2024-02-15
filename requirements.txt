@@ -18,7 +18,7 @@ jinja2==3.0.1             # via flask
 markupsafe==2.0.1         # via jinja2
 pycparser==2.20           # via cffi
 python-json-logger==0.1.11 # via jwt_proxy (setup.py)
-pyjwt[crypto]==2.1.0      # via jwt_proxy (setup.py)
+pyjwt[crypto]==2.8.0      # via jwt_proxy (setup.py)
 requests==2.26.0          # via jwt_proxy (setup.py)
 typing-extensions==3.10.0.0  # via importlib-metadata
 urllib3==1.26.6           # via requests
