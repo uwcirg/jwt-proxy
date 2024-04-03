@@ -13,7 +13,7 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 def scope_filter(req, token):
     # Check path
     resource_pattern = rf"(Patient|DocumentReference)$"
-    if not re.search(resource_pattern, req.path):
+    if re.search(resource_pattern, req.path) is None:
         return False
     
     user_id = token.get("sub")
