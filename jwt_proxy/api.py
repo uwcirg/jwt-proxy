@@ -11,21 +11,25 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 # TODO: to be pulled into its own module and loaded per config
 def scope_filter(req, token):
+    # Check path
+    resource_pattern = rf"(Patient|DocumentReference)^"
+    if not re.search(resource_pattern, req.path):
+        return False
+    
     user_id = token.get("sub")
-    pattern = rf"(.*?\|)?{user_id}"
-    # Search params
+    pattern = rf"(https:\/\/keycloak\.ltt\.cirg\.uw\.edu\|)?{user_id}"
+    # Search params for keycloak id
     params = req.args
     id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
     if id_param_value is not None and re.search(pattern, id_param_value):
         return True
-    # Search body
+    # Search body for keycloak id
     if req.is_json:
         try:
-            data = req.get_json()
-            parsed_data = json.loads(data)
+            body = req.get_json()
         except (ValueError, TypeError):
             return False
-        reference_string = parsed_data.get('subject', {}).get('reference')
+        reference_string = body.get('subject', {}).get('reference')
         if reference_string is not None and re.search(pattern, reference_string):
             return True
     return False
