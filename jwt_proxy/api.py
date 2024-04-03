@@ -2,12 +2,35 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
+import re
 
 from jwt_proxy.audit import audit_HAPI_change
 
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
+# TODO: to be pulled into its own module and loaded per config
+def scope_filter(req, token):
+    user_id = token.get("sub")
+    pattern = rf"(.*?\|)?{user_id}"
+    # Search params
+    params = req.args
+    id_param_value = params.get("_identifier", params.get("subject.identifier"))
+    if id_param_value is not None and re.search(pattern, id_param_value):
+        return True
+    # Search body
+    data = request.get_data()
+    if data:
+        try:
+            parsed_data = json.loads(data)
+        except (ValueError, TypeError):
+            return False
+        reference_string = parsed_data.get('subject', {}).get('reference')
+        if reference_string is not None and re.search(pattern, reference_string):
+            return True
+    return False
+    
+    
 
 def proxy_request(req, upstream_url, user_info=None):
     """Forward request to given url"""
@@ -67,13 +90,16 @@ def validate_jwt(relative_path):
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
-
-    response_content = proxy_request(
-        req=request,
-        upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
-        user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
-    )
-    return response_content
+    
+    # TODO: call new function here to dynamically load a filter call dependent on config; hardwired for now
+    if scope_filter(req, decoded_token):
+        response_content = proxy_request(
+            req=request,
+            upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
+            user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
+        )
+        return response_content
+    return jsonify(message="invalid request"), 400
 
 
 @blueprint.route("/fhir/.well-known/smart-configuration")
