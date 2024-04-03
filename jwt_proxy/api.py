@@ -15,19 +15,19 @@ def scope_filter(req, token):
     pattern = rf"(.*?\|)?{user_id}"
     # Search params
     params = req.args
-    id_param_value = params.get("_identifier", params.get("subject.identifier"))
+    id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
     if id_param_value is not None and re.search(pattern, id_param_value):
-        return True
+        return "params"
     # Search body
-    data = request.get_data()
-    if data:
+    if req.is_json:
         try:
+            data = req.get_json()
             parsed_data = json.loads(data)
         except (ValueError, TypeError):
-            return False
+            return "Error False"
         reference_string = parsed_data.get('subject', {}).get('reference')
         if reference_string is not None and re.search(pattern, reference_string):
-            return True
+            return "Body"
     return False
     
     
