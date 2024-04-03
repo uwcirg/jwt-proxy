@@ -17,17 +17,17 @@ def scope_filter(req, token):
     params = req.args
     id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
     if id_param_value is not None and re.search(pattern, id_param_value):
-        return "params"
+        return True
     # Search body
     if req.is_json:
         try:
             data = req.get_json()
             parsed_data = json.loads(data)
         except (ValueError, TypeError):
-            return "Error False"
+            return False
         reference_string = parsed_data.get('subject', {}).get('reference')
         if reference_string is not None and re.search(pattern, reference_string):
-            return "Body"
+            return True
     return False
     
     
