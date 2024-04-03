@@ -12,9 +12,9 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 # TODO: to be pulled into its own module and loaded per config
 def scope_filter(req, token):
     # Check path
-    resource_pattern = rf"(Patient|DocumentReference)^"
-    if not re.search(resource_pattern, req.path):
-        return False
+    # resource_pattern = rf"(Patient|DocumentReference)^"
+    # if not re.search(resource_pattern, req.path):
+    #     return False
     
     user_id = token.get("sub")
     pattern = rf"(https:\/\/keycloak\.ltt\.cirg\.uw\.edu\|)?{user_id}"
