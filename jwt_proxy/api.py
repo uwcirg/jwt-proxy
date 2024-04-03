@@ -17,11 +17,11 @@ def scope_filter(req, token):
         return False
     
     user_id = token.get("sub")
-    pattern = rf"(https:\/\/keycloak\.ltt\.cirg\.uw\.edu\|)?{user_id}"
+    identifier_pattern = rf"(https(:|%3[Aa])(\/|%2[Ff]){2}keycloak\.ltt\.cirg\.uw\.edu(%7[Cc]|\|))?{user_id}"
     # Search params for keycloak id
     params = req.args
     id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
-    if id_param_value is not None and re.search(pattern, id_param_value):
+    if id_param_value is not None and re.search(identifier_pattern, id_param_value):
         return True
     # Search body for keycloak id
     if req.is_json:
@@ -29,9 +29,11 @@ def scope_filter(req, token):
             body = req.get_json()
         except (ValueError, TypeError):
             return False
-        reference_string = body.get('subject', {}).get('reference')
-        if reference_string is not None and re.search(pattern, reference_string):
-            return True
+        resource_type = body.get("resourceType")
+        if resource_type == "DocumentReference":
+            reference_string = body.get("subject", {}).get("reference")
+            if reference_string is not None and re.search(identifier_pattern, reference_string):
+                return True
     return False
     
     
