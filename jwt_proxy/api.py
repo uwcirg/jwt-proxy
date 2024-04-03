@@ -92,7 +92,7 @@ def validate_jwt(relative_path):
         return jsonify(message="token expired"), 401
     
     # TODO: call new function here to dynamically load a filter call dependent on config; hardwired for now
-    if scope_filter(req, decoded_token):
+    if scope_filter(request, decoded_token):
         response_content = proxy_request(
             req=request,
             upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
