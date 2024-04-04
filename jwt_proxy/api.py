@@ -18,22 +18,20 @@ def scope_filter(req, token):
     
     user_id = token.get("sub")
     identifier_pattern = rf"(https(:|%3[Aa])(\/|%2[Ff]){2}keycloak\.ltt\.cirg\.uw\.edu(%7[Cc]|\|))?{user_id}"
-    # Search params for keycloak id
+    
+    # Search params for identifier-like param containing keycloak id
     params = req.args
     id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
     if id_param_value is not None and re.search(identifier_pattern, id_param_value):
         return True
-    # Search body for keycloak id
-    if req.is_json:
-        try:
-            body = req.get_json()
-        except (ValueError, TypeError):
-            return False
-        resource_type = body.get("resourceType")
-        if resource_type == "DocumentReference":
-            reference_string = body.get("subject", {}).get("reference")
-            if reference_string is not None and re.search(identifier_pattern, reference_string):
-                return True
+        
+    # Search body for subject.reference containing keycloak id
+    body = req.get_json() # Propegates a 400 BadRequest on failure
+    resource_type = body.get("resourceType")
+    if resource_type == "DocumentReference":
+        reference_string = body.get("subject", {}).get("reference")
+        if reference_string is not None and re.search(identifier_pattern, reference_string):
+            return True
     return False
     
     
@@ -98,14 +96,16 @@ def validate_jwt(relative_path):
         return jsonify(message="token expired"), 401
     
     # TODO: call new function here to dynamically load a filter call dependent on config; hardwired for now
-    if scope_filter(request, decoded_token):
-        response_content = proxy_request(
-            req=request,
-            upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
-            user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
-        )
-        return response_content
-    return jsonify(message="invalid request"), 400
+    scope_filter_ok = scope_filter(request, decoded_token)
+    if not scope_filter_ok:
+        return jsonify(message="Forbidden"), 403
+    
+    response_content = proxy_request(
+        req=request,
+        upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
+        user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
+    )
+    return response_content
 
 
 @blueprint.route("/fhir/.well-known/smart-configuration")
