@@ -2,12 +2,39 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
+import re
 
 from jwt_proxy.audit import audit_HAPI_change
 
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
+# TODO: to be pulled into its own module and loaded per config
+def scope_filter(req, token):
+    # Check path
+    resource_pattern = rf"(Patient|DocumentReference)$"
+    if re.search(resource_pattern, req.path) is None:
+        return False
+    
+    user_id = token.get("sub")
+    identifier_pattern = rf"(https(:|%3[Aa])(\/|%2[Ff]){2}keycloak\.ltt\.cirg\.uw\.edu(%7[Cc]|\|))?{user_id}"
+    
+    # Search params for identifier-like param containing keycloak id
+    params = req.args
+    id_param_value = params.get("identifier", params.get("_identifier", params.get("subject.identifier")))
+    if id_param_value is not None and re.search(identifier_pattern, id_param_value):
+        return True
+        
+    # Search body for subject.reference containing keycloak id
+    body = req.get_json() # Propegates a 400 BadRequest on failure
+    resource_type = body.get("resourceType")
+    if resource_type == "DocumentReference":
+        reference_string = body.get("subject", {}).get("reference")
+        if reference_string is not None and re.search(identifier_pattern, reference_string):
+            return True
+    return False
+    
+    
 
 def proxy_request(req, upstream_url, user_info=None):
     """Forward request to given url"""
@@ -67,7 +94,12 @@ def validate_jwt(relative_path):
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
-
+    
+    # TODO: call new function here to dynamically load a filter call dependent on config; hardwired for now
+    scope_filter_ok = scope_filter(request, decoded_token)
+    if not scope_filter_ok:
+        return jsonify(message="Forbidden"), 403
+    
     response_content = proxy_request(
         req=request,
         upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
