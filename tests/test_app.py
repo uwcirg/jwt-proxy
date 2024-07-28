@@ -1,15 +1,9 @@
 import unittest
 
-from jwt_proxy import create_app
+from jwt_proxy.app import create_app
 
 class TestConfig:
     TESTING = True
-    SERVER_NAME = 'fhir_server.local'
-    SECRET_KEY = 'test_secret_key'
-    TORCH_MODEL_PATH = '/path/to/invalid/model'
-    LOG_LEVEL = 'DEBUG'
-    LOGSERVER_URL = ''
-    LOGSERVER_TOKEN = ''
 
 
 class TestIsaccJWTProxyApp(unittest.TestCase):
