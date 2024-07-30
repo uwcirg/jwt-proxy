@@ -77,7 +77,7 @@ class TestAuthBlueprint(unittest.TestCase):
     def test_smart_configuration(self):
         """Test /fhir/.well-known/smart-configuration endpoint"""
         response = self.client.get('/fhir/.well-known/smart-configuration')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json, {
             'authorization_endpoint': 'http://authorize.example.com',
             'token_endpoint': 'http://token.example.com',
