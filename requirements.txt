@@ -36,6 +36,8 @@ packaging==24.1
     # via gunicorn
 pycparser==2.22
     # via cffi
+python-json-logger==2.0.7
+    # via jwt_proxy (setup.cfg)
 pyjwt[crypto]==2.8.0
     # via jwt_proxy (setup.cfg)
 requests==2.32.3
