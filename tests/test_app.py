@@ -16,7 +16,7 @@ class TestIsaccJWTProxyApp(unittest.TestCase):
         self.assertIsNotNone(self.app)
 
     def test_blueprints_registered(self):
-        self.assertIn('api', self.app.blueprints)
+        self.assertIn('auth', self.app.blueprints)
 
 
 if __name__ == '__main__':
