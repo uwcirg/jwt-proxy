@@ -2,7 +2,6 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
-from json import JSONEncoder
 
 from jwt_proxy.audit import audit_HAPI_change
 
@@ -97,7 +96,7 @@ def config_settings(config_key):
     """Non-secret application settings"""
 
     # workaround no JSON representation for datetime.timedelta
-    class CustomJSONEncoder(JSONEncoder):
+    class CustomJSONEncoder(flask_json.JSONEncoder):
         def default(self, obj):
             return str(obj)
 
