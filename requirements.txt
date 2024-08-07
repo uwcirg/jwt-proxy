@@ -8,7 +8,7 @@ blinker==1.8.2
     # via flask
 certifi==2024.7.4
     # via requests
-cffi==1.16.0
+cffi==1.17.0
     # via cryptography
 charset-normalizer==3.3.2
     # via requests
@@ -16,15 +16,15 @@ click==8.1.7
     # via flask
 cryptography==43.0.0
     # via pyjwt
-flask==2.0.1
-    # via jwt_proxy (setup.cfg)
+flask==3.0.3
+    # via jwt_proxy (setup.py)
 gunicorn==22.0.0
-    # via jwt_proxy (setup.cfg)
+    # via jwt_proxy (setup.py)
 idna==3.7
     # via requests
 importlib-metadata==8.2.0
     # via flask
-itsdangerous==2.0.1
+itsdangerous==2.2.0
     # via flask
 jinja2==3.1.4
     # via flask
@@ -36,15 +36,13 @@ packaging==24.1
     # via gunicorn
 pycparser==2.22
     # via cffi
-python-json-logger==2.0.7
-    # via jwt_proxy (setup.cfg)
-pyjwt[crypto]==2.8.0
-    # via jwt_proxy (setup.cfg)
+pyjwt[crypto]==2.9.0
+    # via jwt_proxy (setup.py)
 requests==2.32.3
-    # via jwt_proxy (setup.cfg)
+    # via jwt_proxy (setup.py)
 urllib3==2.2.2
     # via requests
-werkzeug==2.0.1
+werkzeug==3.0.3
     # via flask
 zipp==3.19.2
     # via importlib-metadata
