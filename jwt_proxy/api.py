@@ -3,7 +3,7 @@ from flask.json.provider import DefaultJSONProvider
 import jwt
 import requests
 import json
-
+import datetime
 from jwt_proxy.audit import audit_HAPI_change
 
 blueprint = Blueprint('auth', __name__)
@@ -97,11 +97,13 @@ def config_settings(config_key):
     """Non-secret application settings"""
 
     # workaround no JSON representation for datetime.timedelta
-    class CustomJSONEncoder(DefaultJSONProvider):
+    class CustomJSONProvider(DefaultJSONProvider):
         def default(self, obj):
-            return str(obj)
+            if isinstance(obj, datetime.timedelta):
+                return str(obj)
+            return super().default(obj)
 
-    current_app.json_encoder = CustomJSONEncoder
+    current_app.json = CustomJSONProvider
 
     # return selective keys - not all can be be viewed by users, e.g.secret key
     blacklist = ("SECRET", "KEY")
