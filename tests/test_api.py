@@ -1,22 +1,15 @@
 import unittest
-from flask import Flask
-from jwt_proxy.api import blueprint, proxy_request, validate_jwt, smart_configuration, config_settings
-import json
 from unittest.mock import patch, MagicMock
+import json
 import jwt
+from jwt_proxy.api import proxy_request
+from jwt_proxy.app import create_app
 
 class TestAuthBlueprint(unittest.TestCase):
     def setUp(self):
         """Set up a test Flask app and client"""
-        self.app = Flask(__name__)
+        self.app = create_app()
         self.app.config['TESTING'] = True
-        self.app.config['UPSTREAM_SERVER'] = 'http://example.com'
-        self.app.config['JWKS_URL'] = 'http://jwks.example.com'
-        self.app.config['PATH_WHITELIST'] = ['/whitelisted']
-        self.app.config['OIDC_AUTHORIZE_URL'] = 'http://authorize.example.com'
-        self.app.config['OIDC_TOKEN_URI'] = 'http://token.example.com'
-        self.app.config['OIDC_TOKEN_INTROSPECTION_URI'] = 'http://introspection.example.com'
-        self.app.register_blueprint(blueprint)
         self.client = self.app.test_client()
 
     @patch('requests.request')
