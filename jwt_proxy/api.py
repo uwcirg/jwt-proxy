@@ -9,6 +9,14 @@ from jwt_proxy.audit import audit_HAPI_change
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
+# Workaround no JSON representation for datetime.timedelta
+class CustomJSONProvider(DefaultJSONProvider):
+    def __init__(self, app):
+        super().__init__(app)
+
+    def default(self, o):
+        return str(o)
+
 
 def proxy_request(req, upstream_url, user_info=None):
     """Forward request to given url"""
@@ -95,17 +103,6 @@ def smart_configuration():
 @blueprint.route("/settings/<string:config_key>")
 def config_settings(config_key):
     """Non-secret application settings"""
-
-    # workaround no JSON representation for datetime.timedelta
-    class CustomJSONProvider(DefaultJSONProvider):
-        def __init__(self, app):
-            super().__init__(app)
-
-        def default(self, o):
-            return str(o)
-
-    current_app.json = CustomJSONProvider
-
     # return selective keys - not all can be be viewed by users, e.g.secret key
     blacklist = ("SECRET", "KEY")
 

@@ -4,11 +4,12 @@ from logging import config as logging_config
 
 from jwt_proxy import api
 from jwt_proxy.audit import audit_log_init, audit_entry
-
+from jwt_proxy.api import CustomJSONProvider
 
 def create_app(testing=False, cli=False):
     """Application factory, used to create application"""
     app = Flask("jwt_proxy")
+    app.json = CustomJSONProvider
     register_blueprints(app)
     configure_app(app)
 
