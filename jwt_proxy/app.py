@@ -11,7 +11,7 @@ def create_app(testing=False, cli=False):
     app = Flask("jwt_proxy")
     register_blueprints(app)
     configure_app(app)
-
+    print("Configuring")
     return app
 
 
