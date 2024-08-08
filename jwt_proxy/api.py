@@ -12,9 +12,11 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 # Workaround no JSON representation for datetime.timedelta
 class CustomJSONProvider(DefaultJSONProvider):
     def __init__(self, app):
+        print("Initialized the provider")
         super().__init__(app)
 
     def default(self, o):
+        print("Using default")
         return str(o)
 
 
