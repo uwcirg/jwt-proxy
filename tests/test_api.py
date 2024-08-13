@@ -8,7 +8,7 @@ from jwt_proxy.app import create_app
 class TestAuthBlueprint(unittest.TestCase):
     def setUp(self):
         """Set up a test Flask app and client"""
-        self.app = create_app()
+        self.app = create_app(testing=True)
         self.app.config['TESTING'] = True
         self.client = self.app.test_client()
 
@@ -23,7 +23,6 @@ class TestAuthBlueprint(unittest.TestCase):
         req.method = 'GET'
         req.headers = {'Authorization': 'Bearer token'}
         req.args = {'param': 'value'}
-        req.json = None
         req.data = None
 
         response = proxy_request(req, 'http://example.com/api')
