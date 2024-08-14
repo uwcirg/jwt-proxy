@@ -78,7 +78,7 @@ class TestAuthBlueprint(unittest.TestCase):
         print(f'Response Data: {response.data.decode()}')
         print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json['message'], "token missing")
+        self.assertEqual(response.json.get('message'), "token missing")
 
         # Test expired token
         mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError()
@@ -87,7 +87,7 @@ class TestAuthBlueprint(unittest.TestCase):
         print(f'Response Data: {response.data.decode()}')
         print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json['message'], "token expired")
+        self.assertEqual(response.json.get('message'), "token expired")
 
     def test_smart_configuration(self):
         """Test /fhir/.well-known/smart-configuration endpoint"""
