@@ -12,7 +12,12 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 # Workaround no JSON representation for datetime.timedelta
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
-        return str(obj)
+        if isinstance(obj, (bytes, bytearray)):
+            return obj.decode('utf-8')
+        try:
+            return super().default(obj)
+        except TypeError:
+            return str(obj)
 
 
 def proxy_request(req, upstream_url, user_info=None):
