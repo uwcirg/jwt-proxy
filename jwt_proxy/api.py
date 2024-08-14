@@ -60,10 +60,9 @@ def validate_jwt(relative_path):
     if not token:
         return jsonify(message="token missing"), 400
 
-    jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
-    signing_key = jwks_client.get_signing_key_from_jwt(token)
-
     try:
+        jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
         decoded_token = jwt.decode(
             jwt=token,
             key=signing_key.key,
@@ -72,6 +71,8 @@ def validate_jwt(relative_path):
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
+    except Exception as e:
+        return jsonify(message=str(e)), 400
 
     response_content = proxy_request(
         req=request,
