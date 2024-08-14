@@ -13,7 +13,7 @@ class TestAuthBlueprint(unittest.TestCase):
         self.app.config['TESTING'] = True
         self.app.config['UPSTREAM_SERVER'] = 'http://example.com'
         self.app.config['JWKS_URL'] = 'http://jwks.example.com'
-        self.app.config['PATH_WHITELIST'] = ['/whitelisted']  # Adding the whitelisted path
+        self.app.config['PATH_WHITELIST'] = ['/whitelisted']
         self.app.config['OIDC_AUTHORIZE_URL'] = 'http://authorize.example.com'
         self.app.config['OIDC_TOKEN_URI'] = 'http://token.example.com'
         self.app.config['OIDC_TOKEN_INTROSPECTION_URI'] = 'http://introspection.example.com'
@@ -60,6 +60,9 @@ class TestAuthBlueprint(unittest.TestCase):
 
         # Test whitelisted path without token
         response = self.client.get('/whitelisted')
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 200)
 
         # Test valid token
