@@ -59,13 +59,6 @@ class TestAuthBlueprint(unittest.TestCase):
         mock_decode.return_value = {'email': 'user@example.com'}
         self.app.json = CustomJSONProvider(self.app)
 
-        # Test whitelisted path without token
-        response = self.client.get('/whitelisted', content_type='application/json')
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Data: {response.data.decode()}')
-        print(f'Response JSON: {response.json}')
-        self.assertEqual(response.status_code, 200)
-
         # Test valid token
         response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
         print(f'Status Code: {response.status_code}')
@@ -89,6 +82,13 @@ class TestAuthBlueprint(unittest.TestCase):
         print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json.get('message'), "token expired")
+
+        # Test whitelisted path without token
+        response = self.client.get('/whitelisted', content_type='application/json')
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
+        self.assertEqual(response.status_code, 200)
 
     def test_smart_configuration(self):
         """Test /fhir/.well-known/smart-configuration endpoint"""
