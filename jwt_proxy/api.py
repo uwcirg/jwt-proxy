@@ -13,7 +13,7 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 class CustomJSONProvider(DefaultJSONProvider):
     @staticmethod
     def default(obj):
-        return str(obj)
+        return "Not_None"
 
 
 def proxy_request(req, upstream_url, user_info=None):
