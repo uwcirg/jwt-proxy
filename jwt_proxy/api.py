@@ -56,7 +56,7 @@ def validate_jwt(relative_path):
         )
         return response_content
 
-    token = request.headers.get("authorization", "").split("Bearer ")[-1]
+    token = request.headers.get("Authorization", "").split("Bearer ")[-1]
     if not token:
         return jsonify(message="token missing"), 400
 
@@ -66,7 +66,6 @@ def validate_jwt(relative_path):
     try:
         decoded_token = jwt.decode(
             jwt=token,
-            # TODO cache public key in redis
             key=signing_key.key,
             algorithms=("RS256"),
             audience=("account"),
