@@ -59,13 +59,11 @@ class TestAuthBlueprint(unittest.TestCase):
         mock_decode.return_value = {'email': 'user@example.com'}
 
         # Test whitelisted path without token
-        response = self.client.get('/whitelisted')  # No need for content_type='application/json' for GET requests
+        response = self.client.get('/whitelisted', content_type='application/json')
         print(f'Status Code: {response.status_code}')
         print(f'Response Data: {response.data.decode()}')
         print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 200)
-        # Add checks for response content if applicable
-        # self.assertEqual(response.json.get('key'), 'expected_value')
 
         # Test valid token
         response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
@@ -73,8 +71,6 @@ class TestAuthBlueprint(unittest.TestCase):
         print(f'Response Data: {response.data.decode()}')
         print(f'Response JSON: {response.json}')
         self.assertEqual(response.status_code, 200)
-        # Add checks for response content if applicable
-        # self.assertEqual(response.json.get('key'), 'expected_value')
 
         # Test missing token
         response = self.client.get('/')
