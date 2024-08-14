@@ -16,15 +16,15 @@ click==8.1.7
     # via flask
 cryptography==43.0.0
     # via pyjwt
-flask==3.0.3
-    # via jwt_proxy (setup.cfg)
+flask==2.0.1
+    # via jwt_proxy (setup.py)
 gunicorn==22.0.0
-    # via jwt_proxy (setup.cfg)
+    # via jwt_proxy (setup.py)
 idna==3.7
     # via requests
 importlib-metadata==8.2.0
     # via flask
-itsdangerous==2.2.0
+itsdangerous==2.0.1
     # via flask
 jinja2==3.1.4
     # via flask
@@ -37,12 +37,12 @@ packaging==24.1
 pycparser==2.22
     # via cffi
 pyjwt[crypto]==2.9.0
-    # via jwt_proxy (setup.cfg)
+    # via jwt_proxy (setup.py)
 requests==2.32.3
-    # via jwt_proxy (setup.cfg)
+    # via jwt_proxy (setup.py)
 urllib3==2.2.2
     # via requests
-werkzeug==3.0.3
+werkzeug==2.0.1
     # via flask
 zipp==3.19.2
     # via importlib-metadata
