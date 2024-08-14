@@ -45,6 +45,7 @@ def proxy_request(req, upstream_url, user_info=None):
     return result
 
 
+
 @blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
 @blueprint.route("/<path:relative_path>", methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
@@ -56,23 +57,23 @@ def validate_jwt(relative_path):
         )
         return response_content
 
-    token = request.headers.get("Authorization", "").split("Bearer ")[-1]
+    token = request.headers.get("authorization", "").split("Bearer ")[-1]
     if not token:
         return jsonify(message="token missing"), 400
 
+    jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
+    signing_key = jwks_client.get_signing_key_from_jwt(token)
+
     try:
-        jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
         decoded_token = jwt.decode(
             jwt=token,
+            # TODO cache public key in redis
             key=signing_key.key,
             algorithms=("RS256"),
             audience=("account"),
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
-    except Exception as e:
-        return jsonify(message=str(e)), 400
 
     response_content = proxy_request(
         req=request,
