@@ -66,17 +66,17 @@ class TestAuthBlueprint(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Test valid token
-        response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
+        response = self.client.get('/', headers={'Authorization': 'Bearer valid_token', 'Content-Type': 'application/json'})
         self.assertEqual(response.status_code, 200)
 
         # Test missing token
-        response = self.client.get('/')
+        response = self.client.get('/', headers={'Content-Type': 'application/json'})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['message'], "token missing")
 
         # Test expired token
         mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError()
-        response = self.client.get('/', headers={'Authorization': 'Bearer expired_token'})
+        response = self.client.get('/', headers={'Authorization': 'Bearer expired_token', 'Content-Type': 'application/json'})
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json['message'], "token expired")
 
