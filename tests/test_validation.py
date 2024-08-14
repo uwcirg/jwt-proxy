@@ -55,18 +55,19 @@ class TestValidateJWT(unittest.TestCase):
         app.testing = True
         self.client = app.test_client()
 
-    @patch('jwt_proxy.api.proxy_request')
+    @patch('your_module.proxy_request')
     def test_path_whitelist(self, mock_proxy_request):
-        mock_proxy_request.return_value = jsonify(message="request proxied")
+        # Mock response as a Flask Response object directly
+        mock_proxy_request.return_value = self.client.get('/allowed_path')
         response = self.client.get("/allowed_path")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, {"message": "request proxied"})
 
-    @patch('jwt_proxy.api.proxy_request')
+    @patch('your_module.proxy_request')
     @patch('jwt.PyJWKClient')
     @patch('jwt.decode')
     def test_valid_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
-        mock_proxy_request.return_value = jsonify(message="request proxied")
+        mock_proxy_request.return_value = self.client.get('/some_path')
         mock_jwks_client.return_value.get_signing_key_from_jwt.return_value.key = "test-key"
         mock_decode.return_value = {"email": "test@example.com"}
 
@@ -75,7 +76,7 @@ class TestValidateJWT(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, {"message": "request proxied"})
 
-    @patch('jwt_proxy.api.proxy_request')
+    @patch('your_module.proxy_request')
     @patch('jwt.PyJWKClient')
     @patch('jwt.decode')
     def test_missing_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
@@ -83,7 +84,7 @@ class TestValidateJWT(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json, {"message": "token missing"})
 
-    @patch('jwt_proxy.api.proxy_request')
+    @patch('your_module.proxy_request')
     @patch('jwt.PyJWKClient')
     @patch('jwt.decode')
     def test_expired_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
