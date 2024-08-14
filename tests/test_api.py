@@ -59,7 +59,7 @@ class TestAuthBlueprint(unittest.TestCase):
         mock_decode.return_value = {'email': 'user@example.com'}
 
         # Test whitelisted path without token
-        response = self.client.get('/whitelisted')
+        response = self.client.get('/whitelisted', content_type='application/json')
         print(f'Status Code: {response.status_code}')
         print(f'Response Data: {response.data.decode()}')
         print(f'Response JSON: {response.json}')

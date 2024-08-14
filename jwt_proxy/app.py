@@ -12,6 +12,7 @@ def create_app(testing=False, cli=False):
     app.json = CustomJSONProvider(app)
     register_blueprints(app)
     configure_app(app)
+
     return app
 
 
