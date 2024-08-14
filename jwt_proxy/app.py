@@ -5,11 +5,13 @@ from logging import config as logging_config
 from jwt_proxy import api
 from jwt_proxy.audit import audit_log_init, audit_entry
 
+
 def create_app(testing=False, cli=False):
     """Application factory, used to create application"""
     app = Flask("jwt_proxy")
     register_blueprints(app)
     configure_app(app)
+
     return app
 
 
@@ -20,6 +22,7 @@ def register_blueprints(app):
 
 def configure_app(app):
     """Load successive configs - overriding defaults"""
+
     app.config.from_object("jwt_proxy.config")
     configure_logging(app)
 
