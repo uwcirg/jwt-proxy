@@ -58,7 +58,6 @@ class TestAuthBlueprint(unittest.TestCase):
         # Set up mock JWT decoding
         mock_decode.return_value = {'email': 'user@example.com'}
         self.app.json = CustomJSONProvider(self.app)
-        self.app.register_blueprint(blueprint)
 
         # Test whitelisted path without token
         response = self.client.get('/whitelisted', content_type='application/json')
