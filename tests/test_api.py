@@ -1,9 +1,10 @@
 import unittest
-from flask import Flask
-from jwt_proxy.api import blueprint, proxy_request, validate_jwt, smart_configuration, config_settings
+from flask import Flask, json
+from jwt_proxy.api import blueprint, proxy_request
 import json
 from unittest.mock import patch, MagicMock
 import jwt
+from jwt_proxy.api import CustomJSONProvider
 
 class TestAuthBlueprint(unittest.TestCase):
     def setUp(self):
@@ -16,6 +17,7 @@ class TestAuthBlueprint(unittest.TestCase):
         self.app.config['OIDC_AUTHORIZE_URL'] = 'http://authorize.example.com'
         self.app.config['OIDC_TOKEN_URI'] = 'http://token.example.com'
         self.app.config['OIDC_TOKEN_INTROSPECTION_URI'] = 'http://introspection.example.com'
+        self.app.json = CustomJSONProvider(self.app)
         self.app.register_blueprint(blueprint)
         self.client = self.app.test_client()
 
