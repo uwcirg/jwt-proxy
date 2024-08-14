@@ -45,53 +45,53 @@ class TestAuthBlueprint(unittest.TestCase):
         response = proxy_request(req, 'http://example.com/api')
         self.assertEqual(response, "Plain text response")
 
-@patch('jwt.PyJWKClient')
-@patch('jwt.decode')
-def test_validate_jwt(self, mock_decode, mock_jwk_client):
-    """Test JWT validation and proxying"""
-    # Set up mock JWKClient
-    mock_key = MagicMock()
-    mock_jwk_client_instance = MagicMock()
-    mock_jwk_client_instance.get_signing_key_from_jwt.return_value = mock_key
-    mock_jwk_client.return_value = mock_jwk_client_instance
+    @patch('jwt.PyJWKClient')
+    @patch('jwt.decode')
+    def test_validate_jwt(self, mock_decode, mock_jwk_client):
+        """Test JWT validation and proxying"""
+        # Set up mock JWKClient
+        mock_key = MagicMock()
+        mock_jwk_client_instance = MagicMock()
+        mock_jwk_client_instance.get_signing_key_from_jwt.return_value = mock_key
+        mock_jwk_client.return_value = mock_jwk_client_instance
 
-    # Set up mock JWT decoding
-    mock_decode.return_value = {'email': 'user@example.com'}
+        # Set up mock JWT decoding
+        mock_decode.return_value = {'email': 'user@example.com'}
 
-    # Test whitelisted path without token
-    response = self.client.get('/whitelisted')  # No need for content_type='application/json' for GET requests
-    print(f'Status Code: {response.status_code}')
-    print(f'Response Data: {response.data.decode()}')
-    print(f'Response JSON: {response.json}')
-    self.assertEqual(response.status_code, 200)
-    # Add checks for response content if applicable
-    # self.assertEqual(response.json.get('key'), 'expected_value')
+        # Test whitelisted path without token
+        response = self.client.get('/whitelisted')  # No need for content_type='application/json' for GET requests
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
+        self.assertEqual(response.status_code, 200)
+        # Add checks for response content if applicable
+        # self.assertEqual(response.json.get('key'), 'expected_value')
 
-    # Test valid token
-    response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
-    print(f'Status Code: {response.status_code}')
-    print(f'Response Data: {response.data.decode()}')
-    print(f'Response JSON: {response.json}')
-    self.assertEqual(response.status_code, 200)
-    # Add checks for response content if applicable
-    # self.assertEqual(response.json.get('key'), 'expected_value')
+        # Test valid token
+        response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
+        self.assertEqual(response.status_code, 200)
+        # Add checks for response content if applicable
+        # self.assertEqual(response.json.get('key'), 'expected_value')
 
-    # Test missing token
-    response = self.client.get('/')
-    print(f'Status Code: {response.status_code}')
-    print(f'Response Data: {response.data.decode()}')
-    print(f'Response JSON: {response.json}')
-    self.assertEqual(response.status_code, 400)
-    self.assertEqual(response.json.get('message'), "token missing")
+        # Test missing token
+        response = self.client.get('/')
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json.get('message'), "token missing")
 
-    # Test expired token
-    mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError()
-    response = self.client.get('/', headers={'Authorization': 'Bearer expired_token'})
-    print(f'Status Code: {response.status_code}')
-    print(f'Response Data: {response.data.decode()}')
-    print(f'Response JSON: {response.json}')
-    self.assertEqual(response.status_code, 401)
-    self.assertEqual(response.json.get('message'), "token expired")
+        # Test expired token
+        mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError()
+        response = self.client.get('/', headers={'Authorization': 'Bearer expired_token'})
+        print(f'Status Code: {response.status_code}')
+        print(f'Response Data: {response.data.decode()}')
+        print(f'Response JSON: {response.json}')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json.get('message'), "token expired")
 
     def test_smart_configuration(self):
         """Test /fhir/.well-known/smart-configuration endpoint"""
