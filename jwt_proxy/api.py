@@ -11,8 +11,7 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 # Workaround no JSON representation for datetime.timedelta
 class CustomJSONProvider(DefaultJSONProvider):
-    @staticmethod
-    def default(obj):
+    def default(self, obj):
         return str(obj)
 
 
