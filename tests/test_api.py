@@ -1,10 +1,9 @@
 import unittest
-from flask import Flask
-from jwt_proxy.api import blueprint, proxy_request
-import json
 from unittest.mock import patch, MagicMock
+from flask import Flask
+import json
 import jwt
-from jwt_proxy.api import CustomJSONProvider
+from jwt_proxy.api import blueprint, proxy_request, CustomJSONProvider, validate_jwt
 
 class TestAuthBlueprint(unittest.TestCase):
     def setUp(self):
@@ -45,51 +44,6 @@ class TestAuthBlueprint(unittest.TestCase):
         response = proxy_request(req, 'http://example.com/api')
         self.assertEqual(response, "Plain text response")
 
-    @patch('jwt.PyJWKClient')
-    @patch('jwt.decode')
-    def test_validate_jwt(self, mock_decode, mock_jwk_client):
-        """Test JWT validation and proxying"""
-        # Set up mock JWKClient
-        mock_key = MagicMock()
-        mock_jwk_client_instance = MagicMock()
-        mock_jwk_client_instance.get_signing_key_from_jwt.return_value = mock_key
-        mock_jwk_client.return_value = mock_jwk_client_instance
-
-        # Set up mock JWT decoding
-        mock_decode.return_value = {'email': 'user@example.com'}
-        self.app.json = CustomJSONProvider(self.app)
-
-        # Test whitelisted path without token
-        response = self.client.get('/whitelisted', content_type='application/json')
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Data: {response.data.decode()}')
-        print(f'Response JSON: {response.json}')
-        self.assertEqual(response.status_code, 200)
-
-        # Test valid token
-        response = self.client.get('/', headers={'Authorization': 'Bearer valid_token'})
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Data: {response.data.decode()}')
-        print(f'Response JSON: {response.json}')
-        self.assertEqual(response.status_code, 200)
-
-        # Test missing token
-        response = self.client.get('/')
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Data: {response.data.decode()}')
-        print(f'Response JSON: {response.json}')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json.get('message'), "token missing")
-
-        # Test expired token
-        mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError()
-        response = self.client.get('/', headers={'Authorization': 'Bearer expired_token'})
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Data: {response.data.decode()}')
-        print(f'Response JSON: {response.json}')
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json.get('message'), "token expired")
-
     def test_smart_configuration(self):
         """Test /fhir/.well-known/smart-configuration endpoint"""
         response = self.client.get('/fhir/.well-known/smart-configuration')
@@ -116,6 +70,73 @@ class TestAuthBlueprint(unittest.TestCase):
         # Test accessing sensitive config
         response = self.client.get('/settings/SECRET_KEY')
         self.assertEqual(response.status_code, 400)
+
+class TestValidateJWT(unittest.TestCase):
+    def setUp(self):
+        self.app = Flask(__name__)
+        self.app.config["PATH_WHITELIST"] = ["/allowed_path"]
+        self.app.config["UPSTREAM_SERVER"] = "http://upstream-server"
+        self.app.config["JWKS_URL"] = "http://jwks-url"
+        
+        # Register the route using the validate_jwt function
+        @self.app.route("/", defaults={"relative_path": ""}, methods=["GET", "POST"])
+        @self.app.route("/<path:relative_path>", methods=["GET", "POST"])
+        def validate_jwt_route(relative_path):
+            return validate_jwt(relative_path)
+        
+        self.client = self.app.test_client()
+
+    @patch('jwt_proxy.api.proxy_request')  # Adjust the import path based on where proxy_request is defined
+    def test_path_whitelist(self, mock_proxy_request):
+        # Mock response directly without using jsonify
+        mock_proxy_request.return_value = {"message": "request proxied"}
+        
+        with self.app.app_context():
+            response = self.client.get("/allowed_path")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"message": "request proxied"})
+
+    @patch('jwt_proxy.api.proxy_request')  # Adjust the import path based on where proxy_request is defined
+    @patch('jwt.PyJWKClient')
+    @patch('jwt.decode')
+    def test_valid_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
+        mock_proxy_request.return_value = {"message": "request proxied"}
+        mock_jwks_client.return_value.get_signing_key_from_jwt.return_value.key = "test-key"
+        mock_decode.return_value = {"email": "test@example.com"}
+
+        headers = {"Authorization": "Bearer valid-token"}
+        
+        with self.app.app_context():
+            response = self.client.get("/some_path", headers=headers)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"message": "request proxied"})
+
+    @patch('jwt_proxy.api.proxy_request')  # Adjust the import path based on where proxy_request is defined
+    @patch('jwt.PyJWKClient')
+    @patch('jwt.decode')
+    def test_missing_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
+        with self.app.app_context():
+            response = self.client.get("/some_path")
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {"message": "token missing"})
+
+    @patch('jwt_proxy.api.proxy_request')  # Adjust the import path based on where proxy_request is defined
+    @patch('jwt.PyJWKClient')
+    @patch('jwt.decode')
+    def test_expired_token(self, mock_decode, mock_jwks_client, mock_proxy_request):
+        mock_jwks_client.return_value.get_signing_key_from_jwt.return_value.key = "test-key"
+        mock_decode.side_effect = jwt.exceptions.ExpiredSignatureError("token expired")
+
+        headers = {"Authorization": "Bearer expired-token"}
+        
+        with self.app.app_context():
+            response = self.client.get("/some_path", headers=headers)
+        
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json, {"message": "token expired"})
 
 if __name__ == '__main__':
     unittest.main()
