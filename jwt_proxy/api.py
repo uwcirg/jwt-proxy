@@ -1,12 +1,18 @@
-from flask import Blueprint, abort, current_app, jsonify, request, json as flask_json
+from flask import Blueprint, abort, current_app, jsonify, request
 import jwt
 import requests
 import json
+from flask.json.provider import DefaultJSONProvider
 
 from jwt_proxy.audit import audit_HAPI_change
 
 blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
+
+# Workaround no JSON representation for datetime.timedelta
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        return str(obj)
 
 
 def proxy_request(req, upstream_url, user_info=None):
@@ -37,6 +43,7 @@ def proxy_request(req, upstream_url, user_info=None):
         from flask import current_app
         current_app.logger.exception(e)
     return result
+
 
 
 @blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
@@ -94,14 +101,6 @@ def smart_configuration():
 @blueprint.route("/settings/<string:config_key>")
 def config_settings(config_key):
     """Non-secret application settings"""
-
-    # workaround no JSON representation for datetime.timedelta
-    class CustomJSONEncoder(flask_json.JSONEncoder):
-        def default(self, obj):
-            return str(obj)
-
-    current_app.json_encoder = CustomJSONEncoder
-
     # return selective keys - not all can be be viewed by users, e.g.secret key
     blacklist = ("SECRET", "KEY")
 
