@@ -45,6 +45,9 @@ def deets_from_url(url, resource_type, id):
     if not parsed.path.startswith("/fhir/"):
         audit_entry(f"Unexpected fhir path: {url} can't parse", level="error")
     items = parsed.path.split('/')
+    # /fhir base URL, no resourceType
+    if len(items) < 3:
+        return resource_type, id
     resource_type = resource_type or items[2]
     id = id or items[3] if len(items) > 3 else None
     return resource_type, id
