@@ -42,7 +42,7 @@ def deets_from_url(url, resource_type, id):
 
     # url: UPSTREAM_SERVER/fhir/ResourceType/<id or params>
     parsed = urlparse(url)
-    if not parsed.path.startswith("/fhir/"):
+    if not parsed.path.startswith("/fhir"):
         audit_entry(f"Unexpected fhir path: {url} can't parse", level="error")
     items = parsed.path.split('/')
     # /fhir base URL, no resourceType
