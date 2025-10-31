@@ -2,9 +2,7 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
-import os
-import importlib.util
-from types import ModuleType
+from jwt_proxy.policy_engine import evaluate_policies
 
 from jwt_proxy.audit import audit_HAPI_change
 
@@ -47,92 +45,18 @@ def proxy_request(req, upstream_url, user_info=None):
     return result
 
 
-def evaluate_policies(req, user_info=None):
-    """Load and evaluate policies in filename order.
+def _extract_user_from_claims(user_info):
+    """Extract a displayable user identifier from JWT claims for audit.
 
-    A policy module should expose a callable named `evaluate` (preferred) or `rule` with signature:
-        evaluate(request, user_info) -> one of:
-            - True / "allow"               => allow request
-            - False / "deny"               => deny request
-            - None / anything else         => no decision, continue
-        Optionally, it may return a tuple: (decision, message)
-
-    Returns a tuple: (decision: bool | None, message: str | None)
-    decision == True  => allowed
-    decision == False => denied
-    decision == None  => no policies made a decision
+    Accepts either a dict of claims (preferred) or a pre-extracted string.
     """
-    policies_dir = current_app.config.get("POLICIES_DIR")
-    if not policies_dir:
-        return None, None
-    if not os.path.isdir(policies_dir):
-        current_app.logger.warning("POLICIES_DIR '%s' not found or not a directory", policies_dir)
-        return None, None
-
-    policy_files = [
-        os.path.join(policies_dir, name)
-        for name in sorted(os.listdir(policies_dir))
-        if name.endswith(".py") and not name.startswith("__")
-    ]
-
-    for file_path in policy_files:
-        try:
-            module = _load_module_from_path(file_path)
-        except Exception as e:
-            current_app.logger.exception("Failed to load policy module %s: %s", file_path, e)
-            continue
-
-        policy_callable = None
-        if hasattr(module, "evaluate") and callable(getattr(module, "evaluate")):
-            policy_callable = getattr(module, "evaluate")
-        elif hasattr(module, "rule") and callable(getattr(module, "rule")):
-            policy_callable = getattr(module, "rule")
-
-        if not policy_callable:
-            current_app.logger.warning("Policy module %s has no callable 'evaluate' or 'rule'", file_path)
-            continue
-
-        try:
-            result = policy_callable(req, user_info)
-        except Exception as e:
-            current_app.logger.exception("Policy module %s raised exception: %s", file_path, e)
-            # Treat exceptions as no-decision; continue to next policy
-            continue
-
-        decision = None
-        message = None
-
-        if isinstance(result, tuple) and len(result) >= 1:
-            decision = result[0]
-            message = result[1] if len(result) >= 2 else None
-        else:
-            decision = result
-
-        if isinstance(decision, str):
-            lowered = decision.lower()
-            if lowered == "allow":
-                decision = True
-            elif lowered == "deny":
-                decision = False
-            else:
-                decision = None
-
-        if decision is True:
-            return True, message
-        if decision is False:
-            return False, message
-
-    return None, None
-
-
-def _load_module_from_path(path):
-    """Dynamically load a module from a filesystem path."""
-    module_name = f"policy_{os.path.splitext(os.path.basename(path))[0]}"
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-    assert spec and spec.loader  # for mypy/static analyzers
-    spec.loader.exec_module(module)  # type: ignore[assignment]
-    return module
+    if isinstance(user_info, dict):
+        return (
+            user_info.get("email")
+            or user_info.get("preferred_username")
+            or user_info.get("sub")
+        )
+    return user_info
 
 
 def _extract_user_from_claims(user_info):
