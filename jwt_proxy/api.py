@@ -59,20 +59,6 @@ def _extract_user_from_claims(user_info):
     return user_info
 
 
-def _extract_user_from_claims(user_info):
-    """Extract a displayable user identifier from JWT claims for audit.
-
-    Accepts either a dict of claims (preferred) or a pre-extracted string.
-    """
-    if isinstance(user_info, dict):
-        return (
-            user_info.get("email")
-            or user_info.get("preferred_username")
-            or user_info.get("sub")
-        )
-    return user_info
-
-
 @blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
 @blueprint.route("/<path:relative_path>", methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
