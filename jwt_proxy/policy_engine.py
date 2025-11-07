@@ -3,6 +3,9 @@ import importlib.util
 
 # Store loaded policies as (callable, file_path) tuples in load order
 _loaded_policies = []
+# Store loaded transformers: request transformers and response transformers
+_loaded_request_transformers = []
+_loaded_response_transformers = []
 
 
 def load_policies(app):
@@ -47,6 +50,15 @@ def load_policies(app):
 
         _loaded_policies.append((policy_callable, file_path))
         app.logger.info("Loaded policy: %s", file_path)
+        
+        # Check for transformer functions
+        if hasattr(module, "transform_request") and callable(getattr(module, "transform_request")):
+            _loaded_request_transformers.append((getattr(module, "transform_request"), file_path))
+            app.logger.info("Loaded request transformer: %s", file_path)
+        
+        if hasattr(module, "transform_response") and callable(getattr(module, "transform_response")):
+            _loaded_response_transformers.append((getattr(module, "transform_response"), file_path))
+            app.logger.info("Loaded response transformer: %s", file_path)
 
     app.logger.info("Loaded %d policy module(s) from %s", len(_loaded_policies), policies_dir)
 
@@ -101,6 +113,74 @@ def evaluate_policies(req, user_info=None):
             return False, message
 
     return None, None
+
+
+def apply_request_transformers(req, user_info=None):
+    """Apply all request transformers to modify the request body.
+    
+    Transformers should have signature: transform_request(request, request_body, user_info) -> modified_request_body (dict)
+    Returns the modified request body, or original if no transformers apply.
+    """
+    if not req.json:
+        return None
+    
+    modified_body = req.json.copy()
+    for transformer, file_path in _loaded_request_transformers:
+        try:
+            result = transformer(req, modified_body, user_info)
+            if result is not None:
+                modified_body = result
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.exception("Request transformer %s raised exception: %s", file_path, e)
+            continue
+    
+    return modified_body
+
+
+def apply_response_transformers(req, response_body, user_info=None):
+    """Apply all response transformers to modify the response body.
+    
+    Transformers should have signature: transform_response(request, response_body, user_info) -> modified_response_body
+    Returns the modified response body, or None if a FHIR resource was filtered out.
+    
+    Note: Transformers can return:
+    - Modified body (dict): use this as the new body
+    - None: indicates no modification needed OR FHIR resource was filtered
+      - Caller should check if original was FHIR resource to determine if filtered
+    """
+    if not isinstance(response_body, dict):
+        return response_body
+    
+    # Track if we started with a FHIR resource
+    is_fhir_resource = response_body.get("resourceType") is not None
+    
+    modified_body = response_body
+    filtered = False
+    
+    for transformer, file_path in _loaded_response_transformers:
+        try:
+            result = transformer(req, modified_body, user_info)
+            if result is not None:
+                # Transformer returned a modified body
+                modified_body = result
+                filtered = False  # Reset filtered flag if we got a result
+            elif is_fhir_resource and isinstance(modified_body, dict) and modified_body.get("resourceType"):
+                # Transformer returned None for a FHIR resource - it was filtered
+                filtered = True
+                break  # Stop processing, resource was filtered
+            # If result is None for non-FHIR, continue with current modified_body
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.exception("Response transformer %s raised exception: %s", file_path, e)
+            continue
+    
+    # If filtered, return None to signal filtering
+    if filtered:
+        return None
+    
+    # Return modified body (should never be None at this point, but fallback to original)
+    return modified_body if modified_body is not None else response_body
 
 
 def _load_module_from_path(path):

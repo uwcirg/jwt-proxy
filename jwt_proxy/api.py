@@ -2,7 +2,7 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
-from jwt_proxy.policy_engine import evaluate_policies
+from jwt_proxy.policy_engine import evaluate_policies, apply_request_transformers, apply_response_transformers
 
 from jwt_proxy.audit import audit_HAPI_change
 
@@ -17,18 +17,50 @@ def proxy_request(req, upstream_url, user_info=None):
     if decision is False:
         abort(403, description=message or "Request denied by policy")
 
+    # Apply request transformers for POST/PUT requests
+    modified_request_body = None
+    if req.method in ("POST", "PUT") and req.json:
+        modified_request_body = apply_request_transformers(req, user_info)
+    
+    # Prepare request data
+    request_json = modified_request_body if modified_request_body is not None else req.json
+    request_data = req.data if not request_json else None
+
     response = requests.request(
         method=req.method,
         url=upstream_url,
         headers=req.headers,
         params=req.args,
-        json=req.json,
-        data=req.data,
+        json=request_json,
+        data=request_data,
     )
+    
+    # Parse response
     try:
         result = response.json()
     except json.decoder.JSONDecodeError:
         return response.text
+
+    # Apply response transformers for GET requests
+    if req.method == "GET" and isinstance(result, dict):
+        original_result = result
+        modified_result = apply_response_transformers(req, result, user_info)
+        if modified_result is not None:
+            # Transformer returned modified result
+            result = modified_result
+        elif isinstance(original_result, dict) and original_result.get("resourceType"):
+            # Transformer returned None for a FHIR resource - it was filtered
+            if original_result.get("resourceType") == "Bundle":
+                # Bundle was filtered - return empty bundle
+                result = {
+                    "resourceType": "Bundle",
+                    "type": original_result.get("type", "searchset"),
+                    "total": 0,
+                    "entry": []
+                }
+            else:
+                # Single resource was filtered - return 404
+                abort(404, description="Resource not found or access denied")
 
     # Capture all changes
     try:
