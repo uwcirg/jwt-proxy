@@ -6,7 +6,7 @@ security label in the resource's meta.security.
 
 Access Control Rules:
 - Individual resources: Only accessible if they have a Keycloak security label
-  with a code matching the user's JWT subject claim. Returns 404 if not accessible.
+  with a code matching the user's JWT subject claim. Returns 401 if not accessible.
 - Bundle responses: Filters entries to only include resources with matching security
   labels. Updates bundle total to reflect filtered count.
 - Resources without Keycloak security labels are always denied.
@@ -104,13 +104,13 @@ def transform_response(request, response_body, user_info=None):
     
     Access Control:
     - Individual resources: Only accessible if they have a Keycloak security label
-      matching the user's JWT subject claim. Returns None to signal 404 if denied.
+      matching the user's JWT subject claim. Returns None to signal 401 if denied.
     - Bundle responses: Filters entries to only include accessible resources and
       updates the total count accordingly.
     
     Only processes GET requests returning FHIR resources or bundles.
     Returns modified response body, or original body if not a FHIR resource,
-    or None if a FHIR resource was filtered out (should result in 404).
+    or None if a FHIR resource was filtered out (should result in 401 Unauthorized).
     """
     from flask import current_app
     
@@ -137,7 +137,7 @@ def transform_response(request, response_body, user_info=None):
             current_app.logger.info("Denied access to bundle - no user ID")
             return modified
         elif _is_fhir_resource(response_body):
-            # Single FHIR resource without user ID - deny access (will result in 404)
+            # Single FHIR resource without user ID - deny access (will result in 401)
             current_app.logger.info("Denied access to resource - no user ID")
             return None
         # Not a FHIR resource, return None to indicate no modification
@@ -164,7 +164,7 @@ def transform_response(request, response_body, user_info=None):
             return response_body
         else:
             # Resource doesn't have matching Keycloak security label - deny access
-            # This will result in a 404 response
+            # This will result in a 401 Unauthorized response
             current_app.logger.info(
                 "Denied access to %s/%s - no matching Keycloak security label (user: %s)",
                 resource_type,

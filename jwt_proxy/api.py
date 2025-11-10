@@ -60,8 +60,8 @@ def proxy_request(req, upstream_url, user_info=None):
                     "entry": []
                 }
             else:
-                # Single resource was filtered - return 404
-                abort(404, description="Resource not found or access denied")
+                # Single resource was filtered - return 401 Unauthorized
+                abort(401, description="Access denied: Resource does not have a matching Keycloak security label")
 
     # Capture all changes
     try:
