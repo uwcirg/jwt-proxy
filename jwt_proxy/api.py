@@ -18,6 +18,7 @@ def proxy_request(req, upstream_url, user_info=None):
         abort(403, description=message or "Request denied by policy")
 
     # Apply request transformers for POST/PUT requests
+    # Flask's request.json now works for FHIR content types thanks to FHIRRequest class
     modified_request_body = None
     if req.method in ("POST", "PUT") and req.json:
         modified_request_body = apply_request_transformers(req, user_info)
