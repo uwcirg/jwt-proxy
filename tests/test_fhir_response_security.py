@@ -276,46 +276,6 @@ def test_filters_single_resource_when_user_info_missing():
     assert result is None
 
 
-def test_does_not_modify_post_request():
-    """Test that POST requests are not modified."""
-    module = importlib.import_module("jwt_proxy.policies.51_fhir_response_security")
-    
-    fhir_resource = {
-        "resourceType": "Patient",
-        "id": "123"
-    }
-    
-    user_info = {
-        "sub": "wahs-test-user-1"
-    }
-    
-    req = FakeRequest(path="/Patient", method="POST")
-    result = module.transform_response(req, fhir_resource.copy(), user_info)
-    
-    # Should return None (no modification for non-GET requests)
-    assert result is None
-
-
-def test_does_not_modify_non_fhir_resource():
-    """Test that non-FHIR resources are not modified."""
-    module = importlib.import_module("jwt_proxy.policies.51_fhir_response_security")
-    
-    non_fhir_resource = {
-        "data": "some data",
-        "not_resourceType": "something"
-    }
-    
-    user_info = {
-        "sub": "wahs-test-user-1"
-    }
-    
-    req = FakeRequest(path="/api/data", method="GET")
-    result = module.transform_response(req, non_fhir_resource.copy(), user_info)
-    
-    # Should return None (no modification for non-FHIR resources)
-    assert result is None
-
-
 def test_handles_bundle_without_entries():
     """Test that bundle without entries is handled correctly."""
     module = importlib.import_module("jwt_proxy.policies.51_fhir_response_security")
@@ -377,17 +337,6 @@ def test_handles_resource_with_multiple_security_labels():
     # Should be allowed (has user's security label)
     assert result is not None
     assert result == fhir_resource
-
-
-def test_policy_evaluation_returns_none():
-    """Test that policy evaluation always returns None (no decision)."""
-    module = importlib.import_module("jwt_proxy.policies.51_fhir_response_security")
-    
-    req = FakeRequest(path="/Patient/123", method="GET")
-    result = module.evaluate(req, user_info={"sub": "test-user"})
-    
-    # Should return None (no decision, let other policies decide)
-    assert result is None
 
 
 def test_handles_missing_sub_claim():

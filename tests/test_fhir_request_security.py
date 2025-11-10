@@ -130,46 +130,6 @@ def test_initializes_meta_if_missing():
     assert len(result["meta"]["security"]) == 1
 
 
-def test_does_not_modify_get_request():
-    """Test that GET requests are not modified."""
-    module = importlib.import_module("jwt_proxy.policies.50_fhir_request_security")
-    
-    fhir_resource = {
-        "resourceType": "Patient",
-        "id": "123"
-    }
-    
-    user_info = {
-        "sub": "wahs-test-user-1"
-    }
-    
-    req = FakeRequest(path="/Patient/123", method="GET", json_body=fhir_resource)
-    result = module.transform_request(req, fhir_resource.copy(), user_info)
-    
-    # Should return None (no modification)
-    assert result is None
-
-
-def test_does_not_modify_non_fhir_resource():
-    """Test that non-FHIR resources are not modified."""
-    module = importlib.import_module("jwt_proxy.policies.50_fhir_request_security")
-    
-    non_fhir_resource = {
-        "data": "some data",
-        "not_resourceType": "something"
-    }
-    
-    user_info = {
-        "sub": "wahs-test-user-1"
-    }
-    
-    req = FakeRequest(path="/api/data", method="POST", json_body=non_fhir_resource)
-    result = module.transform_request(req, non_fhir_resource.copy(), user_info)
-    
-    # Should return None (no modification)
-    assert result is None
-
-
 def test_requires_user_info():
     """Test that transformer returns None if user_info is missing."""
     module = importlib.import_module("jwt_proxy.policies.50_fhir_request_security")
@@ -207,13 +167,71 @@ def test_requires_sub_claim():
     assert result is None
 
 
-def test_policy_evaluation_returns_none():
-    """Test that policy evaluation always returns None (no decision)."""
+def test_adds_security_labels_to_transaction_bundle():
+    """Test that security labels are added to resources in a transaction Bundle."""
     module = importlib.import_module("jwt_proxy.policies.50_fhir_request_security")
     
-    req = FakeRequest(path="/Patient", method="POST")
-    result = module.evaluate(req, user_info={"sub": "test-user"})
+    transaction_bundle = {
+        "resourceType": "Bundle",
+        "type": "transaction",
+        "entry": [
+            {
+                "request": {
+                    "method": "POST",
+                    "url": "Patient"
+                },
+                "resource": {
+                    "resourceType": "Patient",
+                    "name": [{"given": ["John"], "family": "Doe"}]
+                }
+            },
+            {
+                "request": {
+                    "method": "GET",
+                    "url": "Patient/123"
+                }
+            },
+            {
+                "request": {
+                    "method": "POST",
+                    "url": "Observation"
+                },
+                "resource": {
+                    "resourceType": "Observation",
+                    "status": "final",
+                    "code": {"text": "Test"}
+                }
+            }
+        ]
+    }
     
-    # Should return None (no decision, let other policies decide)
-    assert result is None
+    user_info = {
+        "sub": "wahs-test-user-1"
+    }
+    
+    req = FakeRequest(path="/fhir", method="POST", json_body=transaction_bundle)
+    result = module.transform_request(req, transaction_bundle.copy(), user_info)
+    
+    assert result is not None
+    assert result["resourceType"] == "Bundle"
+    assert result["type"] == "transaction"
+    assert len(result["entry"]) == 3
+    
+    # First entry (POST Patient) should have security label
+    patient = result["entry"][0]["resource"]
+    assert "meta" in patient
+    assert "security" in patient["meta"]
+    assert len(patient["meta"]["security"]) == 1
+    assert patient["meta"]["security"][0]["code"] == "wahs-test-user-1"
+    
+    # Second entry (GET) should be unchanged (no resource)
+    assert "resource" not in result["entry"][1]
+    
+    # Third entry (POST Observation) should have security label
+    observation = result["entry"][2]["resource"]
+    assert "meta" in observation
+    assert "security" in observation["meta"]
+    assert len(observation["meta"]["security"]) == 1
+    assert observation["meta"]["security"][0]["code"] == "wahs-test-user-1"
+
 

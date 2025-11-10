@@ -48,14 +48,23 @@ def _has_user_security_label(resource, keycloak_user_id):
     return False
 
 
+def _safe_log(level, message, *args):
+    """Safely log a message, only if Flask app context is available."""
+    try:
+        from flask import has_app_context, current_app
+        if has_app_context():
+            getattr(current_app.logger, level)(message, *args)
+    except Exception:
+        # Ignore logging errors (e.g., no app context in tests)
+        pass
+
+
 def _filter_bundle_entries(bundle, keycloak_user_id):
     """Filter bundle entries to only include resources with user's Keycloak security label.
     
     Removes any entries where the resource doesn't have a matching Keycloak security label.
     Updates the bundle's total count to reflect the number of remaining resources.
     """
-    from flask import current_app
-    
     if not isinstance(bundle, dict):
         return bundle
     
@@ -89,7 +98,7 @@ def _filter_bundle_entries(bundle, keycloak_user_id):
     
     filtered_count = original_count - len(filtered_entries)
     if filtered_count > 0:
-        current_app.logger.info(
+        _safe_log("info",
             "Filtered %d resource(s) from bundle (user: %s, remaining: %d)",
             filtered_count,
             keycloak_user_id,
@@ -112,8 +121,6 @@ def transform_response(request, response_body, user_info=None):
     Returns modified response body, or original body if not a FHIR resource,
     or None if a FHIR resource was filtered out (should result in 401 Unauthorized).
     """
-    from flask import current_app
-    
     # Only process GET requests
     if request.method != "GET":
         # Not a GET request, return None to indicate no modification needed
@@ -123,7 +130,7 @@ def transform_response(request, response_body, user_info=None):
     if not user_info or not isinstance(user_info, dict):
         # If no user info, deny access (filter everything)
         keycloak_user_id = None
-        current_app.logger.warning("No user_info provided for GET request - denying access")
+        _safe_log("warning", "No user_info provided for GET request - denying access")
     else:
         keycloak_user_id = user_info.get("sub")
     
@@ -134,11 +141,11 @@ def transform_response(request, response_body, user_info=None):
             modified = copy.deepcopy(response_body)
             modified["entry"] = []
             modified["total"] = 0
-            current_app.logger.info("Denied access to bundle - no user ID")
+            _safe_log("info", "Denied access to bundle - no user ID")
             return modified
         elif _is_fhir_resource(response_body):
             # Single FHIR resource without user ID - deny access (will result in 401)
-            current_app.logger.info("Denied access to resource - no user ID")
+            _safe_log("info", "Denied access to resource - no user ID")
             return None
         # Not a FHIR resource, return None to indicate no modification
         return None
@@ -155,7 +162,7 @@ def transform_response(request, response_body, user_info=None):
         
         if _has_user_security_label(response_body, keycloak_user_id):
             # Resource has matching Keycloak security label - allow access
-            current_app.logger.debug(
+            _safe_log("debug",
                 "Allowed access to %s/%s (user: %s)",
                 resource_type,
                 resource_id,
@@ -165,7 +172,7 @@ def transform_response(request, response_body, user_info=None):
         else:
             # Resource doesn't have matching Keycloak security label - deny access
             # This will result in a 401 Unauthorized response
-            current_app.logger.info(
+            _safe_log("info",
                 "Denied access to %s/%s - no matching Keycloak security label (user: %s)",
                 resource_type,
                 resource_id,

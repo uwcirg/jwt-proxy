@@ -51,6 +51,17 @@ def _add_security_label(resource, keycloak_user_id):
     return resource
 
 
+def _safe_log(level, message, *args):
+    """Safely log a message, only if Flask app context is available."""
+    try:
+        from flask import has_app_context, current_app
+        if has_app_context():
+            getattr(current_app.logger, level)(message, *args)
+    except Exception:
+        # Ignore logging errors (e.g., no app context in tests)
+        pass
+
+
 def transform_request(request, request_body, user_info=None):
     """Transform FHIR request bodies to add security labels.
     
@@ -58,36 +69,34 @@ def transform_request(request, request_body, user_info=None):
     Handles both single resources and transaction Bundles.
     Returns modified request body or None if no changes needed.
     """
-    from flask import current_app
-    
     # Only process POST/PUT requests
     if request.method not in ("POST", "PUT"):
-        current_app.logger.debug("transform_request: Not POST/PUT, skipping")
+        _safe_log("debug", "transform_request: Not POST/PUT, skipping")
         return None
     
     # Extract keycloak user ID from JWT claims
     if not user_info or not isinstance(user_info, dict):
-        current_app.logger.debug("transform_request: No user_info, skipping")
+        _safe_log("debug", "transform_request: No user_info, skipping")
         return None
     
     keycloak_user_id = user_info.get("sub")
     if not keycloak_user_id:
-        current_app.logger.debug("transform_request: No sub claim, skipping")
+        _safe_log("debug", "transform_request: No sub claim, skipping")
         return None
     
     # Check if this is a FHIR resource
     if not _is_fhir_resource(request_body):
-        current_app.logger.debug("transform_request: Not a FHIR resource, skipping")
+        _safe_log("debug", "transform_request: Not a FHIR resource, skipping")
         return None
     
     # Check if this is a transaction Bundle
     if (isinstance(request_body, dict) and 
         request_body.get("resourceType") == "Bundle" and 
         request_body.get("type") == "transaction"):
-        current_app.logger.debug("transform_request: Processing transaction Bundle")
+        _safe_log("debug", "transform_request: Processing transaction Bundle")
         # Process transaction Bundle entries
         entries = request_body.get("entry", [])
-        current_app.logger.debug("transform_request: Bundle has %d entries", len(entries) if isinstance(entries, list) else 0)
+        _safe_log("debug", "transform_request: Bundle has %d entries", len(entries) if isinstance(entries, list) else 0)
         if isinstance(entries, list):
             # Create a deep copy of the bundle to avoid modifying the original
             modified_body = copy.deepcopy(request_body)
@@ -106,26 +115,26 @@ def transform_request(request, request_body, user_info=None):
                 entry_request = modified_entry.get("request", {})
                 if isinstance(entry_request, dict):
                     entry_method = entry_request.get("method", "").upper()
-                    current_app.logger.debug("transform_request: Entry %d has method %s", idx, entry_method)
+                    _safe_log("debug", "transform_request: Entry %d has method %s", idx, entry_method)
                     
                     # Only process POST/PUT entries (resources that would be saved)
                     if entry_method in ("POST", "PUT"):
                         resource = modified_entry.get("resource")
                         if isinstance(resource, dict) and _is_fhir_resource(resource):
-                            current_app.logger.debug("transform_request: Adding security label to entry %d resource (type: %s)", 
-                                                     idx, resource.get("resourceType", "unknown"))
+                            _safe_log("debug", "transform_request: Adding security label to entry %d resource (type: %s)", 
+                                     idx, resource.get("resourceType", "unknown"))
                             # Add security label to the resource (already a deep copy)
                             modified_resource = _add_security_label(resource, keycloak_user_id)
                             modified_entry["resource"] = modified_resource
                             processed_count += 1
                         else:
-                            current_app.logger.debug("transform_request: Entry %d resource is not a valid FHIR resource", idx)
+                            _safe_log("debug", "transform_request: Entry %d resource is not a valid FHIR resource", idx)
                 else:
-                    current_app.logger.debug("transform_request: Entry %d has no request object", idx)
+                    _safe_log("debug", "transform_request: Entry %d has no request object", idx)
                 
                 modified_entries.append(modified_entry)
             
-            current_app.logger.info("transform_request: Processed %d resources in transaction Bundle", processed_count)
+            _safe_log("info", "transform_request: Processed %d resources in transaction Bundle", processed_count)
             modified_body["entry"] = modified_entries
             return modified_body
     
