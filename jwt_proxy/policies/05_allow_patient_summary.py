@@ -151,6 +151,18 @@ def transform_response(request, response_body, user_info=None):
     filtered_entries = []
     original_count = len(entries)
     
+    # Check if the Patient resource itself has a matching security label
+    # If so, we allow all related resources in $everything
+    patient_has_label = False
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        resource = entry.get("resource")
+        if isinstance(resource, dict) and resource.get("resourceType") == "Patient":
+            if _has_user_security_label(resource, keycloak_user_id):
+                patient_has_label = True
+                break
+    
     for entry in entries:
         if not isinstance(entry, dict):
             # Keep non-dict entries (shouldn't happen, but be safe)
@@ -158,7 +170,17 @@ def transform_response(request, response_body, user_info=None):
             continue
         
         resource = entry.get("resource")
-        if _is_resource_allowed_for_summary(resource, keycloak_user_id):
+        
+        # For $everything: if Patient has matching label, allow all resources
+        # For $summary: use the standard filtering rules
+        path = request.path or ""
+        is_everything = "$everything" in path
+        
+        if is_everything and patient_has_label:
+            # Allow all resources if Patient has matching security label
+            filtered_entries.append(entry)
+        elif _is_resource_allowed_for_summary(resource, keycloak_user_id):
+            # Standard filtering: Composition, security label, or absent-unknown
             filtered_entries.append(entry)
     
     # Update bundle with filtered entries
@@ -168,10 +190,18 @@ def transform_response(request, response_body, user_info=None):
     filtered_count = original_count - len(filtered_entries)
     if filtered_count > 0:
         _safe_log("info",
-            "Filtered %d resource(s) from Patient operation bundle (user: %s, remaining: %d)",
+            "Filtered %d resource(s) from Patient operation bundle (user: %s, remaining: %d, patient_has_label: %s)",
             filtered_count,
             keycloak_user_id,
-            len(filtered_entries)
+            len(filtered_entries),
+            patient_has_label
+        )
+    else:
+        _safe_log("debug",
+            "Patient operation bundle: %d entries, user: %s, patient_has_label: %s",
+            original_count,
+            keycloak_user_id,
+            patient_has_label
         )
     
     return modified_bundle
