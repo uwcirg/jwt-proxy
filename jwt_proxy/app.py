@@ -17,7 +17,6 @@ class FHIRRequest(Request):
             mt == "application/json"
             or mt.endswith("+json")
             or "json+fhir" in mt  # matches application/json+fhir
-            or mt.endswith("+fhir")  # matches application/fhir+json and similar
         )
 
 
