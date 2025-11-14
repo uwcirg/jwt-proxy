@@ -1,8 +1,8 @@
-"""FHIR response transformer: Allow Patient $summary operation with relaxed filtering.
+"""FHIR response transformer: Allow Patient $summary and $everything operations with relaxed filtering.
 
-This transformer handles the FHIR Patient $summary operation (/fhir/Patient/{id}/$summary)
-which returns a Bundle containing a Composition and related resources. For this operation,
-the filtering rules are relaxed to allow:
+This transformer handles the FHIR Patient $summary and $everything operations
+(/fhir/Patient/{id}/$summary and /fhir/Patient/{id}/$everything) which return Bundles
+containing related resources. For these operations, the filtering rules are relaxed to allow:
 - Composition resources (always allowed)
 - Resources with matching Keycloak security labels
 - Resources explicitly marked as empty/absent with the absent-unknown-uv-ips coding
@@ -27,10 +27,10 @@ def _safe_log(level, message, *args):
 
 
 def _is_patient_summary_request(request):
-    """Check if the request is for a Patient $summary operation."""
+    """Check if the request is for a Patient $summary or $everything operation."""
     path = request.path or ""
-    # Match pattern: /fhir/Patient/{id}/$summary
-    pattern = r"^/fhir/Patient/[^/]+/\$summary$"
+    # Match pattern: /fhir/Patient/{id}/$summary or /fhir/Patient/{id}/$everything
+    pattern = r"^/fhir/Patient/[^/]+/\$(summary|everything)$"
     return bool(re.match(pattern, path))
 
 
@@ -107,11 +107,11 @@ def _is_resource_allowed_for_summary(resource, keycloak_user_id):
 
 
 def transform_response(request, response_body, user_info=None):
-    """Transform FHIR response bodies for Patient $summary operation.
+    """Transform FHIR response bodies for Patient $summary and $everything operations.
     
-    Only processes GET requests to /fhir/Patient/{id}/$summary that return Bundles.
-    Filters bundle entries to allow Composition resources, resources with matching
-    security labels, and resources marked as absent/unknown.
+    Only processes GET requests to /fhir/Patient/{id}/$summary or /fhir/Patient/{id}/$everything
+    that return Bundles. Filters bundle entries to allow Composition resources, resources with
+    matching security labels, and resources marked as absent/unknown.
     
     Returns modified response body, or None if not applicable.
     """
@@ -119,7 +119,7 @@ def transform_response(request, response_body, user_info=None):
     if request.method != "GET":
         return None
     
-    # Only process Patient $summary requests
+    # Only process Patient $summary or $everything requests
     if not _is_patient_summary_request(request):
         return None
     
@@ -130,7 +130,7 @@ def transform_response(request, response_body, user_info=None):
     # Extract keycloak user ID from JWT claims
     if not user_info or not isinstance(user_info, dict):
         keycloak_user_id = None
-        _safe_log("warning", "No user_info provided for Patient $summary request - denying access")
+        _safe_log("warning", "No user_info provided for Patient operation request - denying access")
     else:
         keycloak_user_id = user_info.get("sub")
     
@@ -139,7 +139,7 @@ def transform_response(request, response_body, user_info=None):
         modified = copy.deepcopy(response_body)
         modified["entry"] = []
         modified["total"] = 0
-        _safe_log("info", "Denied access to Patient $summary - no user ID")
+        _safe_log("info", "Denied access to Patient operation - no user ID")
         return modified
     
     # Filter bundle entries
@@ -168,7 +168,7 @@ def transform_response(request, response_body, user_info=None):
     filtered_count = original_count - len(filtered_entries)
     if filtered_count > 0:
         _safe_log("info",
-            "Filtered %d resource(s) from Patient $summary bundle (user: %s, remaining: %d)",
+            "Filtered %d resource(s) from Patient operation bundle (user: %s, remaining: %d)",
             filtered_count,
             keycloak_user_id,
             len(filtered_entries)
