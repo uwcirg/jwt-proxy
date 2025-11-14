@@ -108,6 +108,15 @@ def _filter_bundle_entries(bundle, keycloak_user_id):
     return modified_bundle
 
 
+def _is_patient_summary_request(request):
+    """Check if the request is for a Patient $summary operation."""
+    import re
+    path = request.path or ""
+    # Match pattern: /fhir/Patient/{id}/$summary
+    pattern = r"^/fhir/Patient/[^/]+/\$summary$"
+    return bool(re.match(pattern, path))
+
+
 def transform_response(request, response_body, user_info=None):
     """Transform FHIR response bodies to enforce access control based on Keycloak security labels.
     
@@ -116,6 +125,7 @@ def transform_response(request, response_body, user_info=None):
       matching the user's JWT subject claim. Returns None to signal 401 if denied.
     - Bundle responses: Filters entries to only include accessible resources and
       updates the total count accordingly.
+    - Patient $summary requests: Handled by 05_allow_patient_summary.py with relaxed rules.
     
     Only processes GET requests returning FHIR resources or bundles.
     Returns modified response body, or original body if not a FHIR resource,
@@ -124,6 +134,10 @@ def transform_response(request, response_body, user_info=None):
     # Only process GET requests
     if request.method != "GET":
         # Not a GET request, return None to indicate no modification needed
+        return None
+    
+    # Skip Patient $summary requests - handled by 05_allow_patient_summary.py
+    if _is_patient_summary_request(request):
         return None
     
     # Extract keycloak user ID from JWT claims
