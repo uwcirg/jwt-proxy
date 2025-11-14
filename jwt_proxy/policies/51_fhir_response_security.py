@@ -136,9 +136,10 @@ def transform_response(request, response_body, user_info=None):
         # Not a GET request, return None to indicate no modification needed
         return None
     
-    # Skip Patient $summary requests - handled by 05_allow_patient_summary.py
+    # Skip Patient $summary and $everything requests - handled by 05_allow_patient_summary.py
+    # Return the response_body unchanged (not None) so it doesn't get interpreted as "filtered out"
     if _is_patient_summary_request(request):
-        return None
+        return response_body
     
     # Extract keycloak user ID from JWT claims
     if not user_info or not isinstance(user_info, dict):
