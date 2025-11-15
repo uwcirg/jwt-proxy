@@ -2,6 +2,7 @@ from flask import Blueprint, abort, current_app, jsonify, request, json as flask
 import jwt
 import requests
 import json
+from jwt_proxy.policy_engine import evaluate_policies
 
 from jwt_proxy.audit import audit_HAPI_change
 
@@ -11,6 +12,11 @@ SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 def proxy_request(req, upstream_url, user_info=None):
     """Forward request to given url"""
+    # Evaluate request against policy modules (if configured)
+    decision, message = evaluate_policies(req=req, user_info=user_info)
+    if decision is False:
+        abort(403, description=message or "Request denied by policy")
+
     response = requests.request(
         method=req.method,
         url=upstream_url,
@@ -28,7 +34,7 @@ def proxy_request(req, upstream_url, user_info=None):
     try:
         if req.method in ("POST", "PUT", "DELETE"):
             audit_HAPI_change(
-                user_info=user_info,
+                user_info=_extract_user_from_claims(user_info),
                 method=req.method,
                 params=req.args,
                 url=upstream_url,
@@ -37,6 +43,20 @@ def proxy_request(req, upstream_url, user_info=None):
         from flask import current_app
         current_app.logger.exception(e)
     return result
+
+
+def _extract_user_from_claims(user_info):
+    """Extract a displayable user identifier from JWT claims for audit.
+
+    Accepts either a dict of claims (preferred) or a pre-extracted string.
+    """
+    if isinstance(user_info, dict):
+        return (
+            user_info.get("email")
+            or user_info.get("preferred_username")
+            or user_info.get("sub")
+        )
+    return user_info
 
 
 @blueprint.route("/", defaults={"relative_path": ""}, methods=SUPPORTED_METHODS)
@@ -71,7 +91,7 @@ def validate_jwt(relative_path):
     response_content = proxy_request(
         req=request,
         upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
-        user_info=decoded_token.get("email") or decoded_token.get("preferred_username"),
+        user_info=decoded_token,
     )
     return response_content
 

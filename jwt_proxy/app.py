@@ -4,6 +4,7 @@ from logging import config as logging_config
 
 from jwt_proxy import api
 from jwt_proxy.audit import audit_log_init, audit_entry
+from jwt_proxy.policy_engine import load_policies
 
 
 def create_app(testing=False, cli=False):
@@ -25,6 +26,7 @@ def configure_app(app):
 
     app.config.from_object("jwt_proxy.config")
     configure_logging(app)
+    load_policies(app)
 
 
 def configure_logging(app):
