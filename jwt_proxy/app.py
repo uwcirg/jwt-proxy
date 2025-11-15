@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, Request
 import logging
 from logging import config as logging_config
 
@@ -7,9 +7,23 @@ from jwt_proxy.audit import audit_log_init, audit_entry
 from jwt_proxy.policy_engine import load_policies
 
 
+class FHIRRequest(Request):
+    """Custom Request class that recognizes FHIR JSON content types."""
+    
+    @property
+    def is_json(self):
+        mt = self.mimetype
+        return (
+            mt == "application/json"
+            or mt.endswith("+json")
+            or "json+fhir" in mt  # matches application/json+fhir
+        )
+
+
 def create_app(testing=False, cli=False):
     """Application factory, used to create application"""
     app = Flask("jwt_proxy")
+    app.request_class = FHIRRequest
     register_blueprints(app)
     configure_app(app)
 
