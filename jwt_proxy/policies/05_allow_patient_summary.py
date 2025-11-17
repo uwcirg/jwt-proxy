@@ -121,7 +121,7 @@ def transform_response(request, response_body, user_info=None):
     
     # Only process Patient $summary or $everything requests
     if not _is_patient_summary_request(request):
-        return None
+        return response_body
     
     # Only process Bundle responses
     if not isinstance(response_body, dict) or response_body.get("resourceType") != "Bundle":
