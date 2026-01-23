@@ -116,7 +116,6 @@ def validate_jwt(relative_path):
             # TODO cache public key in redis
             key=signing_key.key,
             algorithms=("RS256"),
-            audience=("account"),
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
