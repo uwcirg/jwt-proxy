@@ -27,10 +27,14 @@ def proxy_request(req, upstream_url, user_info=None):
     request_json = modified_request_body if modified_request_body is not None else req.json
     request_data = req.data if not request_json else None
 
+    headers=req.headers
+    if True:
+        headers = dict(headers)
+        headers.pop("Authorization")
     response = requests.request(
         method=req.method,
         url=upstream_url,
-        headers=req.headers,
+        headers=headers,
         params=req.args,
         json=request_json,
         data=request_data,
