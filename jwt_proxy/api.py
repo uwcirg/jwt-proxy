@@ -10,7 +10,7 @@ blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 
-def proxy_request(req, upstream_url, user_info=None, passthru_auth=False):
+def proxy_request(req, upstream_url, user_info=None, passthru_auth=True):
     """Forward request to given url"""
     # Evaluate request against policy modules (if configured)
     decision, message = evaluate_policies(req=req, user_info=user_info)
