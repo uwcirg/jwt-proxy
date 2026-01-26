@@ -17,6 +17,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 LOGSERVER_TOKEN = os.getenv("LOGSERVER_TOKEN")
 LOGSERVER_URL = os.getenv("LOGSERVER_URL")
 UPSTREAM_SERVER = os.getenv("UPSTREAM_SERVER")
+PASSTHRU_AUTH_HEADERS = os.getenv("PASSTHRU_AUTH_HEADERS", "true").lower() == "true"
 PATH_WHITELIST = os.getenv(
     "PATH_WHITELIST", "/hapi-fhir-jpaserver/fhir/metadata"
 ).split(",")

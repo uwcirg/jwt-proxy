@@ -10,7 +10,7 @@ blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 
-def proxy_request(req, upstream_url, user_info=None):
+def proxy_request(req, upstream_url, user_info=None, passthru_auth=True):
     """Forward request to given url"""
     # Evaluate request against policy modules (if configured)
     decision, message = evaluate_policies(req=req, user_info=user_info)
@@ -27,10 +27,14 @@ def proxy_request(req, upstream_url, user_info=None):
     request_json = modified_request_body if modified_request_body is not None else req.json
     request_data = req.data if not request_json else None
 
+    headers=req.headers
+    if not passthru_auth:
+        headers = dict(headers)
+        headers.pop("Authorization")
     response = requests.request(
         method=req.method,
         url=upstream_url,
-        headers=req.headers,
+        headers=headers,
         params=req.args,
         json=request_json,
         data=request_data,
@@ -96,10 +100,12 @@ def _extract_user_from_claims(user_info):
 @blueprint.route("/<path:relative_path>", methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
+    passthru_auth = current_app.config.get("PASSTHRU_AUTH_HEADERS")
     if f"/{relative_path}" in current_app.config["PATH_WHITELIST"]:
         response_content = proxy_request(
             req=request,
             upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
+            passthru_auth=passthru_auth,
         )
         return response_content
 
@@ -116,7 +122,6 @@ def validate_jwt(relative_path):
             # TODO cache public key in redis
             key=signing_key.key,
             algorithms=("RS256"),
-            audience=("account"),
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
