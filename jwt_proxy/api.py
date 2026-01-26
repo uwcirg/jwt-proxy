@@ -10,7 +10,7 @@ blueprint = Blueprint('auth', __name__)
 SUPPORTED_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS')
 
 
-def proxy_request(req, upstream_url, user_info=None):
+def proxy_request(req, upstream_url, user_info=None, passthru_auth=False):
     """Forward request to given url"""
     # Evaluate request against policy modules (if configured)
     decision, message = evaluate_policies(req=req, user_info=user_info)
@@ -28,7 +28,7 @@ def proxy_request(req, upstream_url, user_info=None):
     request_data = req.data if not request_json else None
 
     headers=req.headers
-    if not current_app.config.get("PASSTHRU_AUTH_HEADERS"):
+    if not passthru_auth:
         headers = dict(headers)
         headers.pop("Authorization")
     response = requests.request(
@@ -100,10 +100,12 @@ def _extract_user_from_claims(user_info):
 @blueprint.route("/<path:relative_path>", methods=SUPPORTED_METHODS)
 def validate_jwt(relative_path):
     """Validate JWT and pass to upstream server"""
+    passthru_auth = current_app.config.get("PASSTHRU_AUTH_HEADERS")
     if f"/{relative_path}" in current_app.config["PATH_WHITELIST"]:
         response_content = proxy_request(
             req=request,
             upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
+            passthru_auth=passthru_auth,
         )
         return response_content
 
