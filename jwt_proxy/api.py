@@ -28,7 +28,7 @@ def proxy_request(req, upstream_url, user_info=None):
     request_data = req.data if not request_json else None
 
     headers=req.headers
-    if True:
+    if not current_app.config.get("PASSTHRU_AUTH_HEADERS"):
         headers = dict(headers)
         headers.pop("Authorization")
     response = requests.request(
