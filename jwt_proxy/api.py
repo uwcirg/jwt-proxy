@@ -130,6 +130,7 @@ def validate_jwt(relative_path):
         req=request,
         upstream_url=f"{current_app.config['UPSTREAM_SERVER']}/{relative_path}",
         user_info=decoded_token,
+        passthru_auth=passthru_auth,
     )
     return response_content
 
