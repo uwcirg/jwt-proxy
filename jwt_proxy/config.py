@@ -22,3 +22,5 @@ PATH_WHITELIST = os.getenv(
     "PATH_WHITELIST", "/hapi-fhir-jpaserver/fhir/metadata"
 ).split(",")
 POLICIES_DIR = os.getenv("POLICIES_DIR")
+# Externally reachable base URL of this proxy; used to rewrite upstream URLs in responses
+PUBLIC_URL = os.getenv("PUBLIC_URL")
