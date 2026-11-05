@@ -122,7 +122,7 @@ def validate_jwt(relative_path):
             jwt=token,
             # TODO cache public key in redis
             key=signing_key.key,
-            algorithms=("RS256"),
+            algorithms=["RS256"],
             audience=audience,
             options={"verify_aud": bool(audience)},
         )
