@@ -116,15 +116,24 @@ def validate_jwt(relative_path):
     jwks_client = jwt.PyJWKClient(current_app.config["JWKS_URL"])
     signing_key = jwks_client.get_signing_key_from_jwt(token)
 
+    audience = current_app.config.get("JWT_AUDIENCE")
     try:
         decoded_token = jwt.decode(
             jwt=token,
             # TODO cache public key in redis
             key=signing_key.key,
-            algorithms=("RS256"),
+            algorithms=["RS256"],
+            audience=audience,
+            options={"verify_aud": bool(audience)},
         )
     except jwt.exceptions.ExpiredSignatureError:
         return jsonify(message="token expired"), 401
+    except (
+        jwt.exceptions.InvalidAudienceError,
+        jwt.exceptions.MissingRequiredClaimError,
+    ):
+        # wrong audience, or none present when one is required
+        return jsonify(message="invalid audience"), 401
 
     response_content = proxy_request(
         req=request,
